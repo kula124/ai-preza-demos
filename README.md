@@ -14,14 +14,16 @@ Create personalized bedtime stories for children using AI. Multi-step process wi
 - Story library
 - Streaming AI responses
 
-### 2. Email Helper
-Professional email writing assistant powered by Claude. Generate perfectly formatted emails for any occasion.
+### 2. Email Helper ✅
+Professional email writing assistant powered by Claude 3.5 Haiku. Transform raw, informal text into polished professional emails with customizable tone and type.
 
 **Features:**
-- Multiple email types (Professional, Casual, Marketing, etc.)
-- Tone customization
-- Subject line generation
-- Email templates
+- 5 email types (Professional, Casual, Marketing, Sales, Support)
+- 6 tone options (Formal, Friendly, Persuasive, Apologetic, Enthusiastic, Neutral)
+- Raw text input (write naturally, AI formats it)
+- Rewrite capability (edit inputs and regenerate)
+- Subject line + body generation
+- Email library with save/delete
 - Copy to clipboard
 
 ### 3. RAG Chat
@@ -160,6 +162,8 @@ See `.env.example` for all required environment variables.
 
 - **[TODO.md](./TODO.md)** - Detailed task list and specifications
 - **[INSTRUCTIONS.md](./INSTRUCTIONS.md)** - Comprehensive guide for AI agents/developers
+- **[BEDTIME_STORY_APP.md](./BEDTIME_STORY_APP.md)** - Bedtime Story Writer implementation details
+- **[EMAIL_HELPER_APP.md](./EMAIL_HELPER_APP.md)** - Email Helper implementation details
 
 ## 🎨 Features
 
