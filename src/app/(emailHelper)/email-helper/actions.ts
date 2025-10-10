@@ -6,8 +6,15 @@ import { emails } from "@/repo/schema";
 import { desc, eq } from "drizzle-orm";
 import type { EmailFormData, GeneratedEmail } from "./types";
 
+// Check API key
+const apiKey = process.env.ANTHROPIC_API_KEY;
+console.log("=== API Key Check ===");
+console.log("API Key exists:", !!apiKey);
+console.log("API Key length:", apiKey?.length);
+console.log("API Key prefix:", apiKey?.substring(0, 10));
+
 const anthropic = new Anthropic({
-	apiKey: process.env.ANTHROPIC_API_KEY,
+	apiKey: apiKey,
 });
 
 function buildEmailPrompt(formData: EmailFormData): string {
@@ -47,6 +54,9 @@ export async function generateEmailAction(formData: EmailFormData): Promise<{
 	error?: string;
 }> {
 	try {
+		console.log("=== Generate Email Action ===");
+		console.log("Form data:", JSON.stringify(formData, null, 2));
+
 		// Validate input
 		if (!formData.rawText.trim()) {
 			return {
@@ -57,13 +67,16 @@ export async function generateEmailAction(formData: EmailFormData): Promise<{
 
 		// Build prompt
 		const prompt = buildEmailPrompt(formData);
+		console.log("Prompt length:", prompt.length);
 
-		// Call Claude API
+		// Call Claude API (using Haiku for faster, cheaper email generation)
+		console.log("Calling Claude API with model: claude-3-5-haiku-20241022");
 		const message = await anthropic.messages.create({
-			model: "claude-3-5-sonnet-20241022",
+			model: "claude-3-5-haiku-20241022",
 			max_tokens: 1500,
 			messages: [{ role: "user", content: prompt }],
 		});
+		console.log("Claude API response received");
 
 		// Extract response
 		const response =
