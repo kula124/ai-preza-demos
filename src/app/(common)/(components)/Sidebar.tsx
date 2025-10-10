@@ -47,6 +47,13 @@ const navigation: Array<{
 		color: "text-green-600 dark:text-green-400",
 	},
 	{
+		name: "Email Library",
+		href: "/email-library",
+		icon: Mail,
+		color: "text-emerald-600 dark:text-emerald-400",
+		indent: true,
+	},
+	{
 		name: "RAG Chat",
 		href: "/rag-chat",
 		icon: MessageSquare,
