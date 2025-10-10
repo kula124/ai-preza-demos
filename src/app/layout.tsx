@@ -40,11 +40,11 @@ export default function RootLayout({
 	return (
 		<html lang="en" suppressHydrationWarning>
 			<body
-				className={`${geistSans.variable} ${geistMono.variable} antialiased bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-50`}
+				className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-100 dark:bg-gray-950 text-gray-900 dark:text-gray-50`}
 			>
 				<div className="flex h-screen overflow-hidden">
 					<Sidebar />
-					<main className="flex-1 overflow-auto">
+					<main className="flex-1 overflow-auto bg-gray-100 dark:bg-gray-950">
 						<div className="p-8">{children}</div>
 					</main>
 				</div>
