@@ -1,36 +1,188 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AI Preza Demos
 
-## Getting Started
+Three AI-powered demo applications built with Next.js 15, TypeScript, Anthropic Claude, and LangChain.
 
-First, run the development server:
+## 📚 Applications
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+### 1. Bedtime Story Writer
+Create personalized bedtime stories for children using AI. Multi-step process with topic selection, age customization, and character trait emphasis.
+
+**Features:**
+- Age-appropriate content (2-12 years)
+- Topic selection
+- Character emphasis (Confidence, Kindness, Bravery, etc.)
+- Story library
+- Streaming AI responses
+
+### 2. Email Helper
+Professional email writing assistant powered by Claude. Generate perfectly formatted emails for any occasion.
+
+**Features:**
+- Multiple email types (Professional, Casual, Marketing, etc.)
+- Tone customization
+- Subject line generation
+- Email templates
+- Copy to clipboard
+
+### 3. RAG Chat
+Document Q&A using Retrieval-Augmented Generation. Upload PDFs or text files and ask questions with source citations.
+
+**Features:**
+- PDF & text file upload
+- Vector similarity search (pgvector)
+- Source citations
+- Chat history
+- Streaming responses
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Node.js 20+
+- Docker & Docker Compose
+- Anthropic API key
+
+### Installation
+
+1. **Clone and install dependencies:**
+   ```bash
+   git clone <repository-url>
+   cd ai-preza-demos
+   npm install
+   ```
+
+2. **Set up environment variables:**
+   ```bash
+   cp .env.example .env
+   # Edit .env and add your ANTHROPIC_API_KEY
+   ```
+
+3. **Start the database:**
+   ```bash
+   docker compose up -d
+   ```
+
+4. **Run database migrations:**
+   ```bash
+   npm run db:migrate
+   ```
+
+5. **Start the development server:**
+   ```bash
+   npm run dev
+   ```
+
+6. **Open your browser:**
+   Navigate to [http://localhost:3000](http://localhost:3000)
+
+## 🛠️ Tech Stack
+
+- **Framework:** Next.js 15 (App Router)
+- **Language:** TypeScript
+- **Styling:** Tailwind CSS v4
+- **AI:** Anthropic Claude via LangChain
+- **Database:** PostgreSQL 16 with pgvector
+- **ORM:** Drizzle ORM
+- **UI:** Custom components with lucide-react icons
+- **Forms:** react-hook-form + zod
+- **Notifications:** sonner
+
+## 📁 Project Structure
+
+```
+src/
+├── app/
+│   ├── (common)/              # Shared components
+│   │   └── (components)/
+│   │       └── Sidebar.tsx
+│   ├── (bedtimeStory)/        # Bedtime Story Writer
+│   │   └── bedtime-story/
+│   ├── (emailHelper)/         # Email Helper
+│   │   └── email-helper/
+│   ├── (ragChat)/             # RAG Chat
+│   │   └── rag-chat/
+│   ├── layout.tsx             # Root layout
+│   └── page.tsx               # Dashboard
+├── components/
+│   └── ui/                    # Reusable UI components
+├── lib/                       # Utilities & configurations
+├── repo/                      # Database schema (Drizzle)
+├── services/                  # Business logic
+└── utils/                     # Helper functions
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🗄️ Database
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+This project uses PostgreSQL with the pgvector extension for vector similarity search (RAG functionality).
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Available Commands:
 
-## Learn More
+```bash
+# Start database
+docker compose up -d
 
-To learn more about Next.js, take a look at the following resources:
+# Stop database
+docker compose down
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# Generate migration
+npm run db:generate
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+# Apply migrations
+npm run db:migrate
 
-## Deploy on Vercel
+# Open Drizzle Studio (visual DB browser)
+npm run db:studio
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 🔧 Development
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Available Scripts
+
+```bash
+npm run dev          # Start development server
+npm run build        # Build for production
+npm run start        # Start production server
+npm run lint         # Run Biome linter
+npm run format       # Format code with Biome
+```
+
+### Environment Variables
+
+See `.env.example` for all required environment variables.
+
+**Required:**
+- `DATABASE_URL` - PostgreSQL connection string
+- `ANTHROPIC_API_KEY` - Your Anthropic API key
+
+**Optional:**
+- `OPENAI_API_KEY` - For OpenAI embeddings (if not using Anthropic)
+
+## 📖 Documentation
+
+- **[TODO.md](./TODO.md)** - Detailed task list and specifications
+- **[INSTRUCTIONS.md](./INSTRUCTIONS.md)** - Comprehensive guide for AI agents/developers
+
+## 🎨 Features
+
+### Dark Mode
+Automatic dark mode support based on system preferences with manual toggle.
+
+### Responsive Design
+Fully responsive layout optimized for mobile, tablet, and desktop.
+
+### Streaming Responses
+Real-time AI response streaming for better user experience.
+
+### Type Safety
+Full TypeScript coverage with strict type checking.
+
+## 🤝 Contributing
+
+This is a demo project. Feel free to fork and customize for your own use.
+
+## 📝 License
+
+MIT
+
+---
+
+Built with ❤️ using Next.js, Claude, and LangChain
