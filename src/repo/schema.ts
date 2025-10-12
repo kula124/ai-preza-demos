@@ -56,7 +56,7 @@ export const documentChunks = pgTable("document_chunks", {
 		.notNull(),
 	chunkText: text("chunk_text").notNull(),
 	chunkIndex: integer("chunk_index").notNull(),
-	// Vector embeddings - dimension 1536 for OpenAI/Anthropic embeddings
+	// Vector embeddings - dimension 1536 for OpenAI text-embedding-3-small
 	embedding: vector("embedding", { dimensions: 1536 }),
 });
 

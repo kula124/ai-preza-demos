@@ -7,6 +7,7 @@ import {
 	Moon,
 	Sparkles,
 	Sun,
+	FileStack,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -49,7 +50,14 @@ const navigation: Array<{
 		name: "RAG Chat",
 		href: "/rag-chat",
 		icon: MessageSquare,
-		color: "text-orange-600 dark:text-orange-400",
+		color: "text-purple-600 dark:text-purple-400",
+	},
+	{
+		name: "Document Management",
+		href: "/rag-documents",
+		icon: FileStack,
+		color: "text-blue-600 dark:text-blue-400",
+		indent: true,
 	},
 ];
 
