@@ -8,6 +8,20 @@
       "when": 1760098072905,
       "tag": "0000_short_leader",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1760101470554,
+      "tag": "0001_lying_romulus",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1760201971769,
+      "tag": "0002_open_spectrum",
+      "breakpoints": true
     }
   ]
 }
