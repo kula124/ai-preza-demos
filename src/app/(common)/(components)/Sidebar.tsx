@@ -8,6 +8,8 @@ import {
 	Sparkles,
 	Sun,
 	FileStack,
+	Briefcase,
+	FileText,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -64,6 +66,26 @@ const navigation: Array<{
 		href: "/rag-documents",
 		icon: FileStack,
 		color: "text-blue-600 dark:text-blue-400",
+		indent: true,
+	},
+	{
+		name: "Jobs",
+		href: "/jobs/positions",
+		icon: Briefcase,
+		color: "text-indigo-600 dark:text-indigo-400",
+	},
+	{
+		name: "Open Positions",
+		href: "/jobs/positions",
+		icon: Briefcase,
+		color: "text-blue-600 dark:text-blue-400",
+		indent: true,
+	},
+	{
+		name: "Applications",
+		href: "/jobs/applications",
+		icon: FileText,
+		color: "text-purple-600 dark:text-purple-400",
 		indent: true,
 	},
 ];
