@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Briefcase, Plus, Trash2, Edit, DollarSign, MapPin } from "lucide-react";
+import { Briefcase, Plus, Trash2, Edit, DollarSign, MapPin, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 import {
@@ -154,6 +154,25 @@ export default function PositionsPage() {
 										</p>
 									</div>
 								</div>
+
+								{/* Closed By Application Indicator */}
+								{position.closedByApplication && (
+									<div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+										<div className="flex items-center gap-2 text-green-700 dark:text-green-300">
+											<CheckCircle2 className="h-4 w-4" />
+											<span className="text-sm font-medium">
+												Closed by application
+											</span>
+										</div>
+										<Link
+											href={`/jobs/applications/${position.closedByApplication.id}`}
+											onClick={(e) => e.stopPropagation()}
+											className="text-sm text-green-600 dark:text-green-400 hover:underline mt-1 inline-block"
+										>
+											View {position.closedByApplication.candidateName}'s application →
+										</Link>
+									</div>
+								)}
 
 								{/* Details */}
 								<div className="space-y-2 mb-4">

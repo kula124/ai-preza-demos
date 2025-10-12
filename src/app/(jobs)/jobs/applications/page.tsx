@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { FileText, Trash2, Eye, Calendar, Mail } from "lucide-react";
+import { FileText, Trash2, Calendar, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 import {
@@ -13,6 +13,7 @@ import type { ReviewedApplication } from "@/repo/schema";
 export default function ApplicationsPage() {
 	const [applications, setApplications] = useState<ReviewedApplication[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
+	const [isEmbedding, setIsEmbedding] = useState(false);
 
 	useEffect(() => {
 		loadApplications();
@@ -52,23 +53,43 @@ export default function ApplicationsPage() {
 		}
 	};
 
-	const getRecommendationColor = (recommendation: string) => {
-		switch (recommendation) {
-			case "HIRE":
-				return "bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300";
-			case "MAYBE":
-				return "bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300";
-			case "REJECT":
-				return "bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300";
-			default:
-				return "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300";
+	const handleEmbedApplications = async () => {
+		setIsEmbedding(true);
+		try {
+			const response = await fetch("/api/jobs/embed-applications", {
+				method: "POST",
+			});
+			const result = await response.json();
+
+			if (result.success) {
+				toast.success(result.message || "Applications embedded successfully");
+			} else {
+				toast.error(result.error || "Failed to embed applications");
+			}
+		} catch (error) {
+			console.error("Error embedding applications:", error);
+			toast.error("Failed to embed applications");
+		} finally {
+			setIsEmbedding(false);
 		}
 	};
 
 	const getScoreColor = (score: number) => {
-		if (score >= 80) return "text-green-600 dark:text-green-400";
-		if (score >= 60) return "text-yellow-600 dark:text-yellow-400";
-		return "text-red-600 dark:text-red-400";
+		if (score >= 80) return "bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300";
+		if (score >= 60) return "bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300";
+		return "bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300";
+	};
+
+	const getPreviewText = (markdown: string, maxLength = 150) => {
+		// Remove markdown formatting for preview
+		const text = markdown
+			.replace(/#{1,6}\s/g, "") // Remove headers
+			.replace(/\*\*?(.*?)\*\*?/g, "$1") // Remove bold/italic
+			.replace(/\[(.*?)\]\(.*?\)/g, "$1") // Remove links
+			.replace(/`(.*?)`/g, "$1") // Remove code
+			.replace(/\n+/g, " ") // Replace newlines with spaces
+			.trim();
+		return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text;
 	};
 
 	const formatDate = (date: Date) => {
@@ -94,6 +115,15 @@ export default function ApplicationsPage() {
 						</p>
 					</div>
 				</div>
+				<button
+					type="button"
+					onClick={handleEmbedApplications}
+					disabled={isEmbedding}
+					className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+				>
+					<Sparkles className="h-4 w-4" />
+					{isEmbedding ? "Embedding..." : "Embed Applications"}
+				</button>
 			</div>
 
 			{/* Content */}
@@ -116,93 +146,58 @@ export default function ApplicationsPage() {
 					{applications.map((application) => (
 						<div
 							key={application.id}
-							className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6 hover:border-purple-300 dark:hover:border-purple-700 transition-all"
+							className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden hover:border-purple-300 dark:hover:border-purple-700 transition-all"
 						>
-							<div className="flex items-start justify-between">
-								<div className="flex-1">
-									{/* Header */}
-									<div className="flex items-center gap-3 mb-3">
-										<h3 className="text-xl font-semibold">
-											{application.candidateName}
-										</h3>
-										<span
-											className={`px-3 py-1 rounded-full text-sm font-medium ${getRecommendationColor(
-												application.recommendation,
-											)}`}
-										>
-											{application.recommendation}
-										</span>
-										<span
-											className={`text-2xl font-bold ${getScoreColor(
-												application.overallScore,
-											)}`}
-										>
-											{application.overallScore}/100
-										</span>
-									</div>
-
-									{/* Details */}
-									<div className="grid grid-cols-2 gap-4 mb-4">
-										<div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-											<Mail className="h-4 w-4" />
-											{application.candidateEmail}
+							<Link
+								href={`/jobs/applications/${application.id}`}
+								className="block p-6 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+							>
+								<div className="flex items-start justify-between mb-4">
+									<div className="flex-1">
+										<div className="flex items-center gap-3 mb-2">
+											<h3 className="text-xl font-semibold">
+												{application.candidateName}
+											</h3>
+											<span
+												className={`px-3 py-1 rounded-full text-sm font-medium ${getScoreColor(
+													application.overallScore,
+												)}`}
+											>
+												{application.overallScore}/100
+											</span>
 										</div>
 										<div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
 											<Calendar className="h-4 w-4" />
 											{formatDate(application.dateReviewed)}
 										</div>
 									</div>
-
-									<div className="mb-4">
-										<p className="text-sm text-gray-600 dark:text-gray-400">
-											<span className="font-medium">Applied for:</span>{" "}
-											{application.positionApplied}
-										</p>
-									</div>
-
-									{/* Score Breakdown */}
-									<div className="flex flex-wrap gap-3">
-										{application.requiredSkillsScore && (
-											<span className="px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded text-sm">
-												Skills: {application.requiredSkillsScore}
-											</span>
-										)}
-										{application.experienceScore && (
-											<span className="px-3 py-1 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 rounded text-sm">
-												Experience: {application.experienceScore}
-											</span>
-										)}
-										{application.technicalDepthScore && (
-											<span className="px-3 py-1 bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 rounded text-sm">
-												Technical: {application.technicalDepthScore}
-											</span>
-										)}
-										{application.communicationScore && (
-											<span className="px-3 py-1 bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300 rounded text-sm">
-												Communication: {application.communicationScore}
-											</span>
-										)}
-									</div>
 								</div>
 
-								{/* Actions */}
-								<div className="flex gap-2 ml-4">
-									<Link
-										href={`/jobs/applications/${application.id}`}
-										className="p-2 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950 rounded-lg transition-colors"
-										title="View details"
-									>
-										<Eye className="h-5 w-5" />
-									</Link>
-									<button
-										type="button"
-										onClick={() => handleDelete(application.id)}
-										className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 rounded-lg transition-colors"
-										title="Delete"
-									>
-										<Trash2 className="h-5 w-5" />
-									</button>
-								</div>
+								{/* Preview */}
+								<p className="text-gray-600 dark:text-gray-400 text-sm line-clamp-2">
+									{getPreviewText(application.fullMarkdownReview)}
+								</p>
+							</Link>
+
+							{/* Actions */}
+							<div className="px-6 pb-4 flex gap-2">
+								<Link
+									href={`/jobs/applications/${application.id}`}
+									className="flex-1 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors text-center text-sm font-medium"
+								>
+									View Full Review
+								</Link>
+								<button
+									type="button"
+									onClick={(e) => {
+										e.preventDefault();
+										handleDelete(application.id);
+									}}
+									className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 rounded-lg transition-colors"
+									title="Delete"
+								>
+									<Trash2 className="h-5 w-5" />
+								</button>
 							</div>
 						</div>
 					))}

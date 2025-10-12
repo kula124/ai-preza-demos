@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { openPositions } from "@/repo/schema";
+import { openPositions, reviewedApplications } from "@/repo/schema";
 import { eq, desc } from "drizzle-orm";
 import type { PositionFormData } from "../types";
 
@@ -83,13 +83,26 @@ export async function deletePositionAction(id: string) {
 export async function getPositionsAction() {
 	try {
 		const positions = await db
-			.select()
+			.select({
+				position: openPositions,
+				closedByApplication: reviewedApplications,
+			})
 			.from(openPositions)
+			.leftJoin(
+				reviewedApplications,
+				eq(openPositions.closedBy, reviewedApplications.id),
+			)
 			.orderBy(desc(openPositions.createdAt));
+
+		// Transform to include closedByApplication in the position object
+		const transformedPositions = positions.map((p) => ({
+			...p.position,
+			closedByApplication: p.closedByApplication,
+		}));
 
 		return {
 			success: true,
-			positions,
+			positions: transformedPositions,
 		};
 	} catch (error) {
 		console.error("Error fetching positions:", error);
