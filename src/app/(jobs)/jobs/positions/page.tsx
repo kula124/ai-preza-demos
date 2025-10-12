@@ -15,6 +15,7 @@ export default function PositionsPage() {
 	const [positions, setPositions] = useState<OpenPosition[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [showForm, setShowForm] = useState(false);
+	const [editingPosition, setEditingPosition] = useState<OpenPosition | null>(null);
 
 	useEffect(() => {
 		loadPositions();
@@ -70,10 +71,14 @@ export default function PositionsPage() {
 	return (
 		<div className="max-w-7xl mx-auto">
 			{/* Position Form Modal */}
-			{showForm && (
+			{(showForm || editingPosition) && (
 				<PositionForm
-					onClose={() => setShowForm(false)}
+					onClose={() => {
+						setShowForm(false);
+						setEditingPosition(null);
+					}}
 					onSuccess={loadPositions}
+					position={editingPosition}
 				/>
 			)}
 
@@ -127,63 +132,70 @@ export default function PositionsPage() {
 					{positions.map((position) => (
 						<div
 							key={position.id}
-							className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6 hover:border-blue-300 dark:hover:border-blue-700 transition-all"
+							className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 hover:border-blue-300 dark:hover:border-blue-700 transition-all overflow-hidden"
 						>
-							{/* Header */}
-							<div className="flex items-start justify-between mb-4">
-								<div className="flex-1">
-									<div className="flex items-center gap-2 mb-2">
-										<h3 className="font-semibold text-lg">{position.title}</h3>
-										<span
-											className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(
-												position.status,
-											)}`}
-										>
-											{position.status}
-										</span>
+							{/* Clickable Card Content */}
+							<Link href={`/jobs/positions/${position.id}`} className="block p-6">
+								{/* Header */}
+								<div className="flex items-start justify-between mb-4">
+									<div className="flex-1">
+										<div className="flex items-center gap-2 mb-2">
+											<h3 className="font-semibold text-lg">{position.title}</h3>
+											<span
+												className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(
+													position.status,
+												)}`}
+											>
+												{position.status}
+											</span>
+										</div>
+										<p className="text-sm text-gray-600 dark:text-gray-400">
+											{position.department}
+										</p>
 									</div>
-									<p className="text-sm text-gray-600 dark:text-gray-400">
-										{position.department}
-									</p>
 								</div>
-							</div>
 
-							{/* Details */}
-							<div className="space-y-2 mb-4">
-								<div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-									<MapPin className="h-4 w-4" />
-									{position.location} • {position.employmentType}
-								</div>
-								{position.salaryMin && position.salaryMax && (
+								{/* Details */}
+								<div className="space-y-2 mb-4">
 									<div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-										<DollarSign className="h-4 w-4" />
-										${position.salaryMin.toLocaleString()} - $
-										{position.salaryMax.toLocaleString()}
+										<MapPin className="h-4 w-4" />
+										{position.location} • {position.employmentType}
 									</div>
-								)}
-							</div>
+									{position.salaryMin && position.salaryMax && (
+										<div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+											<DollarSign className="h-4 w-4" />
+											${position.salaryMin.toLocaleString()} - $
+											{position.salaryMax.toLocaleString()}
+										</div>
+									)}
+								</div>
 
-							{/* Skills */}
-							<div className="flex flex-wrap gap-2 mb-4">
-								{position.requiredSkills.slice(0, 3).map((skill) => (
-									<span
-										key={skill}
-										className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded text-xs"
-									>
-										{skill}
-									</span>
-								))}
-								{position.requiredSkills.length > 3 && (
-									<span className="px-2 py-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded text-xs">
-										+{position.requiredSkills.length - 3} more
-									</span>
-								)}
-							</div>
+								{/* Skills */}
+								<div className="flex flex-wrap gap-2">
+									{position.requiredSkills.slice(0, 3).map((skill) => (
+										<span
+											key={skill}
+											className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded text-xs"
+										>
+											{skill}
+										</span>
+									))}
+									{position.requiredSkills.length > 3 && (
+										<span className="px-2 py-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded text-xs">
+											+{position.requiredSkills.length - 3} more
+										</span>
+									)}
+								</div>
+							</Link>
 
 							{/* Actions */}
-							<div className="flex gap-2 pt-4 border-t border-gray-200 dark:border-gray-800">
+							<div className="flex gap-2 px-6 pb-6 pt-4 border-t border-gray-200 dark:border-gray-800">
 								<button
 									type="button"
+									onClick={(e) => {
+										e.preventDefault();
+										setEditingPosition(position);
+									}}
 									className="flex-1 py-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm"
 								>
 									<Edit className="h-4 w-4" />
@@ -191,7 +203,10 @@ export default function PositionsPage() {
 								</button>
 								<button
 									type="button"
-									onClick={() => handleDelete(position.id)}
+									onClick={(e) => {
+										e.preventDefault();
+										handleDelete(position.id);
+									}}
 									className="flex-1 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm"
 								>
 									<Trash2 className="h-4 w-4" />

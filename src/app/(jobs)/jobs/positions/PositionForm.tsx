@@ -1,20 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import { toast } from "sonner";
-import { createPositionAction } from "./actions";
+import { createPositionAction, updatePositionAction } from "./actions";
 import type { PositionFormData } from "../types";
+import type { OpenPosition } from "@/repo/schema";
 
 interface PositionFormProps {
 	onClose: () => void;
 	onSuccess: () => void;
+	position?: OpenPosition | null;
 }
 
-export default function PositionForm({ onClose, onSuccess }: PositionFormProps) {
+export default function PositionForm({ onClose, onSuccess, position }: PositionFormProps) {
 	const [isSubmitting, setIsSubmitting] = useState(false);
-	const [formData, setFormData] = useState<PositionFormData>({
-		id: "",
+	const [formData, setFormData] = useState<Omit<PositionFormData, "id">>({
 		title: "",
 		department: "",
 		requiredSkills: [],
@@ -27,10 +28,32 @@ export default function PositionForm({ onClose, onSuccess }: PositionFormProps) 
 	});
 	const [skillInput, setSkillInput] = useState("");
 
+	useEffect(() => {
+		if (position) {
+			setFormData({
+				title: position.title,
+				department: position.department,
+				requiredSkills: position.requiredSkills,
+				experienceLevel: position.experienceLevel,
+				location: position.location,
+				employmentType: position.employmentType,
+				salaryMin: position.salaryMin ?? undefined,
+				salaryMax: position.salaryMax ?? undefined,
+				description: position.description ?? "",
+			});
+		}
+	}, [position]);
+
+	const generatePositionId = () => {
+		// Generate ID like JOB001, JOB002, etc.
+		const timestamp = Date.now().toString().slice(-6);
+		return `JOB${timestamp}`;
+	};
+
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
 
-		if (!formData.id || !formData.title || !formData.department ||
+		if (!formData.title || !formData.department ||
 		    formData.requiredSkills.length === 0 || !formData.experienceLevel ||
 		    !formData.location || !formData.employmentType) {
 			toast.error("Please fill in all required fields");
@@ -39,17 +62,34 @@ export default function PositionForm({ onClose, onSuccess }: PositionFormProps) 
 
 		setIsSubmitting(true);
 		try {
-			const result = await createPositionAction(formData);
-			if (result.success) {
-				toast.success("Position created successfully");
-				onSuccess();
-				onClose();
+			if (position) {
+				// Update existing position
+				const result = await updatePositionAction(position.id, formData);
+				if (result.success) {
+					toast.success("Position updated successfully");
+					onSuccess();
+					onClose();
+				} else {
+					toast.error(result.error || "Failed to update position");
+				}
 			} else {
-				toast.error(result.error || "Failed to create position");
+				// Create new position
+				const positionData: PositionFormData = {
+					...formData,
+					id: generatePositionId(),
+				};
+				const result = await createPositionAction(positionData);
+				if (result.success) {
+					toast.success("Position created successfully");
+					onSuccess();
+					onClose();
+				} else {
+					toast.error(result.error || "Failed to create position");
+				}
 			}
 		} catch (error) {
-			console.error("Error creating position:", error);
-			toast.error("Failed to create position");
+			console.error(`Error ${position ? "updating" : "creating"} position:`, error);
+			toast.error(`Failed to ${position ? "update" : "create"} position`);
 		} finally {
 			setIsSubmitting(false);
 		}
@@ -77,7 +117,9 @@ export default function PositionForm({ onClose, onSuccess }: PositionFormProps) 
 			<div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
 				{/* Header */}
 				<div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-800">
-					<h2 className="text-2xl font-bold">Create New Position</h2>
+					<h2 className="text-2xl font-bold">
+						{position ? "Edit Position" : "Create New Position"}
+					</h2>
 					<button
 						type="button"
 						onClick={onClose}
@@ -89,34 +131,19 @@ export default function PositionForm({ onClose, onSuccess }: PositionFormProps) 
 
 				{/* Form */}
 				<form onSubmit={handleSubmit} className="p-6 space-y-6">
-					{/* ID and Title */}
-					<div className="grid grid-cols-2 gap-4">
-						<div>
-							<label className="block text-sm font-medium mb-2">
-								Position ID <span className="text-red-500">*</span>
-							</label>
-							<input
-								type="text"
-								value={formData.id}
-								onChange={(e) => setFormData({ ...formData, id: e.target.value })}
-								placeholder="e.g., JOB001"
-								className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-								required
-							/>
-						</div>
-						<div>
-							<label className="block text-sm font-medium mb-2">
-								Job Title <span className="text-red-500">*</span>
-							</label>
-							<input
-								type="text"
-								value={formData.title}
-								onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-								placeholder="e.g., Senior Software Engineer"
-								className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-								required
-							/>
-						</div>
+					{/* Title */}
+					<div>
+						<label className="block text-sm font-medium mb-2">
+							Job Title <span className="text-red-500">*</span>
+						</label>
+						<input
+							type="text"
+							value={formData.title}
+							onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+							placeholder="e.g., Senior Software Engineer"
+							className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+							required
+						/>
 					</div>
 
 					{/* Department and Experience Level */}
@@ -292,7 +319,10 @@ export default function PositionForm({ onClose, onSuccess }: PositionFormProps) 
 							className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg hover:from-blue-600 hover:to-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
 							disabled={isSubmitting}
 						>
-							{isSubmitting ? "Creating..." : "Create Position"}
+							{isSubmitting
+								? (position ? "Updating..." : "Creating...")
+								: (position ? "Update Position" : "Create Position")
+							}
 						</button>
 					</div>
 				</form>
