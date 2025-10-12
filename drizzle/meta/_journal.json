@@ -43,6 +43,13 @@
       "when": 1760280907043,
       "tag": "0005_silly_chameleon",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1760289793275,
+      "tag": "0006_large_mad_thinker",
+      "breakpoints": true
     }
   ]
 }
