@@ -9,6 +9,7 @@ import {
 	deletePositionAction,
 } from "./actions";
 import type { OpenPosition } from "@/repo/schema";
+import PositionForm from "./PositionForm";
 
 export default function PositionsPage() {
 	const [positions, setPositions] = useState<OpenPosition[]>([]);
@@ -68,6 +69,14 @@ export default function PositionsPage() {
 
 	return (
 		<div className="max-w-7xl mx-auto">
+			{/* Position Form Modal */}
+			{showForm && (
+				<PositionForm
+					onClose={() => setShowForm(false)}
+					onSuccess={loadPositions}
+				/>
+			)}
+
 			{/* Header */}
 			<div className="flex items-center justify-between mb-6">
 				<div className="flex items-center gap-3">
