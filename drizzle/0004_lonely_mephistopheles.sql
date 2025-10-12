@@ -1,0 +1,2 @@
+ALTER TABLE "open_positions" ADD COLUMN "closed_by" integer;--> statement-breakpoint
+ALTER TABLE "open_positions" ADD CONSTRAINT "open_positions_closed_by_reviewed_applications_id_fk" FOREIGN KEY ("closed_by") REFERENCES "public"."reviewed_applications"("id") ON DELETE no action ON UPDATE no action;

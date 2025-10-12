@@ -104,6 +104,7 @@ export const openPositions = pgTable("open_positions", {
 	salaryMax: integer("salary_max"),
 	status: text("status").default("open").notNull(), // 'open', 'closed', 'filled'
 	description: text("description"),
+	closedBy: integer("closed_by").references(() => reviewedApplications.id), // FK to application that filled this position
 	createdAt: timestamp("created_at").defaultNow().notNull(),
 	updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -111,36 +112,9 @@ export const openPositions = pgTable("open_positions", {
 export const reviewedApplications = pgTable("reviewed_applications", {
 	id: serial("id").primaryKey(),
 	candidateName: text("candidate_name").notNull(),
-	candidateEmail: text("candidate_email").notNull(),
-	candidateGithub: text("candidate_github"),
-	positionApplied: text("position_applied").notNull(),
 	dateReviewed: timestamp("date_reviewed").notNull(),
 	overallScore: integer("overall_score").notNull(),
-
-	// Score breakdown
-	requiredSkillsScore: integer("required_skills_score"),
-	experienceScore: integer("experience_score"),
-	technicalDepthScore: integer("technical_depth_score"),
-	communicationScore: integer("communication_score"),
-
-	// Analysis sections
-	strengths: text("strengths"),
-	gapsConcerns: text("gaps_concerns"),
-	redFlags: text("red_flags"),
-	requirementsCoverage: text("requirements_coverage"),
-	codeQualityReview: text("code_quality_review"),
-
-	// Final recommendation
-	recommendation: text("recommendation").notNull(), // 'HIRE', 'MAYBE', 'REJECT'
-	recommendationReasoning: text("recommendation_reasoning"),
-	nextSteps: text("next_steps"),
-	potentialFit: text("potential_fit"),
-	concernsToValidate: text("concerns_to_validate"),
-
-	// Original data
-	applicationText: text("application_text"),
-	resumeUrl: text("resume_url"),
-
+	fullMarkdownReview: text("full_markdown_review").notNull(), // Complete review in markdown format
 	createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
