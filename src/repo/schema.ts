@@ -87,3 +87,86 @@ export type NewDocumentChunk = typeof documentChunks.$inferInsert;
 
 export type ChatHistory = typeof chatHistory.$inferSelect;
 export type NewChatHistory = typeof chatHistory.$inferInsert;
+
+// ==========================================
+// JOBS FEATURE TABLES
+// ==========================================
+
+export const openPositions = pgTable("open_positions", {
+	id: text("id").primaryKey(), // e.g., "JOB001"
+	title: text("title").notNull(),
+	department: text("department").notNull(),
+	requiredSkills: text("required_skills").array().notNull(),
+	experienceLevel: text("experience_level").notNull(),
+	location: text("location").notNull(),
+	employmentType: text("employment_type").notNull(),
+	salaryMin: integer("salary_min"),
+	salaryMax: integer("salary_max"),
+	status: text("status").default("open").notNull(), // 'open', 'closed', 'filled'
+	description: text("description"),
+	createdAt: timestamp("created_at").defaultNow().notNull(),
+	updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const reviewedApplications = pgTable("reviewed_applications", {
+	id: serial("id").primaryKey(),
+	candidateName: text("candidate_name").notNull(),
+	candidateEmail: text("candidate_email").notNull(),
+	candidateGithub: text("candidate_github"),
+	positionApplied: text("position_applied").notNull(),
+	dateReviewed: timestamp("date_reviewed").notNull(),
+	overallScore: integer("overall_score").notNull(),
+
+	// Score breakdown
+	requiredSkillsScore: integer("required_skills_score"),
+	experienceScore: integer("experience_score"),
+	technicalDepthScore: integer("technical_depth_score"),
+	communicationScore: integer("communication_score"),
+
+	// Analysis sections
+	strengths: text("strengths"),
+	gapsConcerns: text("gaps_concerns"),
+	redFlags: text("red_flags"),
+	requirementsCoverage: text("requirements_coverage"),
+	codeQualityReview: text("code_quality_review"),
+
+	// Final recommendation
+	recommendation: text("recommendation").notNull(), // 'HIRE', 'MAYBE', 'REJECT'
+	recommendationReasoning: text("recommendation_reasoning"),
+	nextSteps: text("next_steps"),
+	potentialFit: text("potential_fit"),
+	concernsToValidate: text("concerns_to_validate"),
+
+	// Original data
+	applicationText: text("application_text"),
+	resumeUrl: text("resume_url"),
+
+	createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const applicationPositionMatches = pgTable(
+	"application_position_matches",
+	{
+		id: serial("id").primaryKey(),
+		applicationId: integer("application_id")
+			.references(() => reviewedApplications.id, { onDelete: "cascade" })
+			.notNull(),
+		positionId: text("position_id")
+			.references(() => openPositions.id, { onDelete: "cascade" })
+			.notNull(),
+		matchingScore: integer("matching_score").notNull(),
+		matchReasoning: text("match_reasoning"),
+		createdAt: timestamp("created_at").defaultNow().notNull(),
+	},
+);
+
+export type OpenPosition = typeof openPositions.$inferSelect;
+export type NewOpenPosition = typeof openPositions.$inferInsert;
+
+export type ReviewedApplication = typeof reviewedApplications.$inferSelect;
+export type NewReviewedApplication = typeof reviewedApplications.$inferInsert;
+
+export type ApplicationPositionMatch =
+	typeof applicationPositionMatches.$inferSelect;
+export type NewApplicationPositionMatch =
+	typeof applicationPositionMatches.$inferInsert;
