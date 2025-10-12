@@ -35,16 +35,16 @@ const apps = [
 	{
 		title: "RAG Chat",
 		description:
-			"Upload documents and ask questions using Retrieval-Augmented Generation. Get accurate answers with source citations from your documents.",
+			"Upload PDF documents and ask questions using Retrieval-Augmented Generation. AI agent searches your documents with semantic chunking and provides answers with source citations.",
 		href: "/rag-chat",
 		icon: MessageSquare,
-		gradient: "from-orange-500 to-red-500",
-		bgGradient: "from-orange-50 to-red-50 dark:from-orange-950/20 dark:to-red-950/20",
+		gradient: "from-purple-500 to-blue-500",
+		bgGradient: "from-purple-50 to-blue-50 dark:from-purple-950/20 dark:to-blue-950/20",
 		features: [
-			"PDF & text upload",
-			"Vector search",
-			"Source citations",
-			"Chat history",
+			"PDF document upload",
+			"Semantic chunking",
+			"LangChain agent with tools",
+			"Source citations with context",
 		],
 	},
 ];
