@@ -2,12 +2,16 @@
 
 import { useState } from "react";
 import DocumentUpload from "./(components)/DocumentUpload";
+import TextDocumentUpload from "./(components)/TextDocumentUpload";
 import DocumentList from "./(components)/DocumentList";
-import { FileStack, MessageSquare } from "lucide-react";
+import { FileStack, MessageSquare, Upload, FileText } from "lucide-react";
 import Link from "next/link";
+
+type UploadTab = "pdf" | "text";
 
 export default function DocumentsPage() {
 	const [refreshTrigger, setRefreshTrigger] = useState(0);
+	const [activeTab, setActiveTab] = useState<UploadTab>("pdf");
 
 	const handleUploadSuccess = () => {
 		setRefreshTrigger((prev) => prev + 1);
@@ -26,7 +30,7 @@ export default function DocumentsPage() {
 							Document Management
 						</h1>
 						<p className="text-gray-500 dark:text-slate-500 mt-1">
-							Upload and manage PDF documents for RAG chat
+							Upload and manage documents for RAG chat
 						</p>
 					</div>
 					<Link
@@ -43,7 +47,41 @@ export default function DocumentsPage() {
 					<h2 className="text-xl font-semibold text-gray-900 dark:text-slate-50 mb-4">
 						Upload Documents
 					</h2>
-					<DocumentUpload onUploadSuccess={handleUploadSuccess} />
+
+					{/* Tabs */}
+					<div className="flex gap-2 mb-6 border-b border-gray-200 dark:border-slate-700">
+						<button
+							type="button"
+							onClick={() => setActiveTab("pdf")}
+							className={`px-4 py-2 font-medium transition-all flex items-center gap-2 ${
+								activeTab === "pdf"
+									? "text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400"
+									: "text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-300"
+							}`}
+						>
+							<Upload className="w-4 h-4" />
+							Upload PDF
+						</button>
+						<button
+							type="button"
+							onClick={() => setActiveTab("text")}
+							className={`px-4 py-2 font-medium transition-all flex items-center gap-2 ${
+								activeTab === "text"
+									? "text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400"
+									: "text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-300"
+							}`}
+						>
+							<FileText className="w-4 h-4" />
+							Paste Text
+						</button>
+					</div>
+
+					{/* Tab Content */}
+					{activeTab === "pdf" ? (
+						<DocumentUpload onUploadSuccess={handleUploadSuccess} />
+					) : (
+						<TextDocumentUpload onUploadSuccess={handleUploadSuccess} />
+					)}
 				</div>
 
 				{/* Document List */}

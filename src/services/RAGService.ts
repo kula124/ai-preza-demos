@@ -202,6 +202,90 @@ export class RAGService {
 	}
 
 	/**
+	 * Process and store a text document (no PDF parsing needed)
+	 */
+	static async processTextDocument(
+		title: string,
+		content: string,
+	): Promise<{ documentId: number; chunksCount: number }> {
+		try {
+			// 1. Store document in database
+			const [document] = await db
+				.insert(documents)
+				.values({
+					filename: title,
+					fileType: "text",
+					content: content,
+				})
+				.returning();
+
+			// 2. Chunk text with RecursiveCharacterTextSplitter
+			const textSplitter = new RecursiveCharacterTextSplitter({
+				chunkSize: 1000,
+				chunkOverlap: 200,
+				separators: ["\n\n", "\n", ". ", " ", ""],
+			});
+
+			const chunks = await textSplitter.createDocuments([content]);
+
+			// 3. Generate embeddings and store chunks
+			console.log(`Generating embeddings for ${chunks.length} chunks...`);
+			const chunkRecords = [];
+
+			for (let index = 0; index < chunks.length; index++) {
+				const chunk = chunks[index];
+				try {
+					console.log(`Chunk ${index + 1}/${chunks.length}: Generating embedding...`);
+
+					// Add delay between requests
+					if (index > 0) {
+						await new Promise(resolve => setTimeout(resolve, 500));
+					}
+
+					// Clean the text
+					const cleanText = chunk.pageContent
+						.replace(/[\u200B-\u200D\uFEFF]/g, "")
+						.replace(/\s+/g, " ")
+						.trim();
+
+					if (!cleanText || cleanText.length < 10) {
+						console.log(`Skipping chunk ${index + 1}: too short or empty`);
+						continue;
+					}
+
+					const embedding = await RAGService.embeddings.embedQuery(cleanText);
+
+					if (!Array.isArray(embedding) || embedding.length === 0) {
+						throw new Error(`Invalid embedding returned for chunk ${index}`);
+					}
+
+					chunkRecords.push({
+						documentId: document.id,
+						chunkText: chunk.pageContent,
+						chunkIndex: index,
+						embedding: embedding,
+					});
+				} catch (error) {
+					console.error(`Error generating embedding for chunk ${index}:`, error);
+					throw error;
+				}
+			}
+
+			await db.insert(documentChunks).values(chunkRecords);
+
+			return {
+				documentId: document.id,
+				chunksCount: chunkRecords.length,
+			};
+		} catch (error) {
+			console.error("Error processing text document:", error);
+			throw new Error(
+				`Failed to process text document: ${error instanceof Error ? error.message : "Unknown error"}`,
+			);
+		}
+	}
+
+	/**
 	 * Get all documents
 	 */
 	static async getAllDocuments() {

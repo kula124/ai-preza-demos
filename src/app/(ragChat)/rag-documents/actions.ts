@@ -72,6 +72,51 @@ export async function getDocumentsAction() {
 	}
 }
 
+export async function uploadTextDocumentAction(
+	title: string,
+	content: string,
+): Promise<UploadDocumentResult> {
+	try {
+		// Validate inputs
+		if (!title.trim()) {
+			return {
+				success: false,
+				error: "Please provide a title",
+			};
+		}
+
+		if (!content.trim()) {
+			return {
+				success: false,
+				error: "Please provide document content",
+			};
+		}
+
+		// Validate content length (max ~50k characters for reasonable processing)
+		if (content.length > 50000) {
+			return {
+				success: false,
+				error: "Content is too long. Please keep it under 50,000 characters.",
+			};
+		}
+
+		const result = await RAGService.processTextDocument(title, content);
+
+		return {
+			success: true,
+			documentId: result.documentId,
+			chunksCount: result.chunksCount,
+		};
+	} catch (error) {
+		console.error("Error uploading text document:", error);
+		return {
+			success: false,
+			error:
+				error instanceof Error ? error.message : "Failed to upload text document",
+		};
+	}
+}
+
 export async function deleteDocumentAction(documentId: number) {
 	try {
 		await RAGService.deleteDocument(documentId);
