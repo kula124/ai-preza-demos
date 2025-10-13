@@ -1,180 +1,190 @@
 import { OpenAIEmbeddings } from "@langchain/openai";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
-import { db } from "@/lib/db";
-import { sql } from "drizzle-orm";
+import { sql, type SQL } from "drizzle-orm";
 import type { PgTable } from "drizzle-orm/pg-core";
+import { db } from "@/lib/db";
 
 /**
- * Base class for embedding services
- * Provides common functionality for generating and storing embeddings
+ * Base service for handling embeddings across different entity types
+ * Provides shared functionality for chunking, embedding, and vector search
  */
 export abstract class BaseEmbeddingService {
-	private static getEmbeddings() {
-		const apiKey = process.env.OPENAI_API_KEY;
-		if (!apiKey) {
-			throw new Error("OPENAI_API_KEY is not configured in environment variables");
-		}
-
-		return new OpenAIEmbeddings({
-			apiKey: apiKey,
-			modelName: "text-embedding-3-small", // 1536 dimensions
-		});
-	}
-
-	protected static embeddings = BaseEmbeddingService.getEmbeddings();
+	private static embeddings = new OpenAIEmbeddings({
+		apiKey: process.env.OPENAI_API_KEY,
+		modelName: "text-embedding-3-small", // 1536 dimensions
+	});
 
 	/**
-	 * Abstract methods that child classes must implement
+	 * Get the embeddings table for this service
 	 */
 	protected abstract getEmbeddingsTable(): PgTable;
+
+	/**
+	 * Get the parent entity table for this service
+	 */
 	protected abstract getEntityTable(): PgTable;
+
+	/**
+	 * Get the foreign key column name (e.g., 'storyId', 'applicationId')
+	 * This is the TypeScript/Drizzle field name
+	 */
 	protected abstract getFKColumnName(): string;
+
+	/**
+	 * Get the database column name for the foreign key (e.g., 'story_id', 'application_id')
+	 * This is the actual SQL column name
+	 */
 	protected abstract getFKColumnNameDB(): string;
+
+	/**
+	 * Get the entity ID column name in the parent table (usually 'id')
+	 */
 	protected abstract getEntityIdColumnName(): string;
+
+	/**
+	 * Get the content field name in the parent table
+	 * This is the TypeScript/Drizzle field name
+	 */
 	protected abstract getContentFieldName(): string;
+
+	/**
+	 * Get the database column name for the content field
+	 * This is the actual SQL column name
+	 */
 	protected abstract getContentFieldNameDB(): string;
 
 	/**
-	 * Embed a single entity (story, application, etc.)
-	 * Chunks the content and generates embeddings for each chunk
+	 * Chunk text and generate embeddings
+	 */
+	protected async chunkAndEmbed(
+		content: string,
+		chunkSize = 1000,
+		chunkOverlap = 200,
+	): Promise<Array<{ chunkText: string; embedding: number[] }>> {
+		const textSplitter = new RecursiveCharacterTextSplitter({
+			chunkSize,
+			chunkOverlap,
+			separators: ["\n\n", "\n", ". ", " ", ""],
+		});
+
+		const chunks = await textSplitter.createDocuments([content]);
+		const results: Array<{ chunkText: string; embedding: number[] }> = [];
+
+		for (let index = 0; index < chunks.length; index++) {
+			const chunk = chunks[index];
+
+			// Clean text
+			const cleanText = chunk.pageContent
+				.replace(/[\u200B-\u200D\uFEFF]/g, "")
+				.replace(/\s+/g, " ")
+				.trim();
+
+			if (cleanText.length < 10) continue;
+
+			// Add delay to avoid rate limiting
+			if (index > 0) {
+				await new Promise((resolve) => setTimeout(resolve, 500));
+			}
+
+			const embedding = await BaseEmbeddingService.embeddings.embedQuery(
+				cleanText,
+			);
+
+			results.push({
+				chunkText: cleanText,
+				embedding,
+			});
+		}
+
+		return results;
+	}
+
+	/**
+	 * Store embeddings for an entity
 	 */
 	async embedEntity(entityId: number, content: string): Promise<void> {
-		try {
-			// Validate content
-			if (!content || content.trim().length < 10) {
-				throw new Error("Content is too short or empty");
-			}
+		const chunks = await this.chunkAndEmbed(content);
 
-			// 1. Chunk the content
-			const textSplitter = new RecursiveCharacterTextSplitter({
-				chunkSize: 1000,
-				chunkOverlap: 200,
-				separators: ["\n\n", "\n", ". ", " ", ""],
-			});
+		const chunkRecords = chunks.map((chunk, index) => ({
+			[this.getFKColumnName()]: entityId,
+			chunkText: chunk.chunkText,
+			chunkIndex: index,
+			embedding: chunk.embedding,
+		}));
 
-			const chunks = await textSplitter.createDocuments([content]);
-			console.log(`Created ${chunks.length} chunks for entity ${entityId}`);
+		const table = this.getEmbeddingsTable();
+		await db.insert(table).values(chunkRecords);
+	}
 
-			// 2. Generate embeddings for each chunk
-			const chunkRecords = [];
-			for (let index = 0; index < chunks.length; index++) {
-				const chunk = chunks[index];
-				try {
-					// Add delay to avoid rate limiting
-					if (index > 0) {
-						await new Promise((resolve) => setTimeout(resolve, 500));
-					}
+	/**
+	 * Perform vector similarity search
+	 * Returns full entities (not just chunks), grouped by entity
+	 */
+	async similaritySearch(
+		query: string,
+		limit = 3,
+	): Promise<Array<{ content: string; entityId: number; entity: any; chunkText?: string; similarity?: number }>> {
+		const queryEmbedding =
+			await BaseEmbeddingService.embeddings.embedQuery(query);
+		const embeddingString = `[${queryEmbedding.join(",")}]`;
 
-					// Clean the text
-					const cleanText = chunk.pageContent
-						.replace(/[\u200B-\u200D\uFEFF]/g, "")
-						.replace(/\s+/g, " ")
-						.trim();
+		const embeddingsTable = this.getEmbeddingsTable();
+		const entityTable = this.getEntityTable();
+		const fkColumnDB = this.getFKColumnNameDB();
+		const entityIdColumn = this.getEntityIdColumnName();
+		const contentFieldDB = this.getContentFieldNameDB();
 
-					if (!cleanText || cleanText.length < 10) {
-						console.log(`Skipping chunk ${index + 1}: too short or empty`);
-						continue;
-					}
+		// Build dynamic SQL query
+		const results = await db.execute<{
+			content: string;
+			entity_id: number;
+			entity_data: any;
+			best_similarity: number;
+			chunk_text: string;
+		}>(sql`
+			SELECT
+				e.${sql.identifier(contentFieldDB)} as content,
+				e.${sql.identifier(entityIdColumn)} as entity_id,
+				row_to_json(e.*) as entity_data,
+				MAX(1 - (emb.embedding <=> ${embeddingString}::vector)) as best_similarity,
+				(SELECT chunk_text FROM ${embeddingsTable} emb2
+					WHERE emb2.${sql.identifier(fkColumnDB)} = e.${sql.identifier(entityIdColumn)}
+					ORDER BY (emb2.embedding <=> ${embeddingString}::vector) ASC
+					LIMIT 1) as chunk_text
+			FROM ${embeddingsTable} emb
+			JOIN ${entityTable} e ON emb.${sql.identifier(fkColumnDB)} = e.${sql.identifier(entityIdColumn)}
+			GROUP BY e.${sql.identifier(entityIdColumn)}, e.${sql.identifier(contentFieldDB)}
+			ORDER BY best_similarity DESC
+			LIMIT ${limit}
+		`);
 
-					// Generate embedding
-					const embedding = await BaseEmbeddingService.embeddings.embedQuery(cleanText);
+		return results.rows.map((row) => ({
+			content: row.content,
+			entityId: row.entity_id,
+			entity: row.entity_data,
+			chunkText: row.chunk_text,
+			similarity: row.best_similarity,
+		}));
+	}
 
-					if (!Array.isArray(embedding) || embedding.length === 0) {
-						throw new Error(`Invalid embedding returned for chunk ${index}`);
-					}
+	/**
+	 * Delete embeddings for an entity
+	 */
+	async deleteEmbeddings(entityId: number): Promise<void> {
+		const table = this.getEmbeddingsTable();
+		const fkColumnDB = this.getFKColumnNameDB();
 
-					chunkRecords.push({
-						[this.getFKColumnName()]: entityId,
-						chunkText: cleanText,
-						chunkIndex: index,
-						embedding: embedding,
-					});
-				} catch (error) {
-					console.error(`Error generating embedding for chunk ${index}:`, error);
-					throw error;
-				}
-			}
-
-			// 3. Store embeddings in database
-			if (chunkRecords.length > 0) {
-				const embeddingsTable = this.getEmbeddingsTable();
-				await db.insert(embeddingsTable).values(chunkRecords);
-				console.log(`Stored ${chunkRecords.length} embeddings for entity ${entityId}`);
-			} else {
-				throw new Error("No valid chunks to embed");
-			}
-		} catch (error) {
-			console.error(`Error embedding entity ${entityId}:`, error);
-			throw error;
-		}
+		await db.execute(sql`
+			DELETE FROM ${table}
+			WHERE ${sql.identifier(fkColumnDB)} = ${entityId}
+		`);
 	}
 
 	/**
 	 * Re-embed an entity (delete old embeddings and create new ones)
 	 */
 	async reEmbedEntity(entityId: number, content: string): Promise<void> {
-		// Delete old embeddings
-		const embeddingsTable = this.getEmbeddingsTable();
-		const fkColumnNameDB = this.getFKColumnNameDB();
-
-		await db.execute(sql`
-			DELETE FROM ${embeddingsTable}
-			WHERE ${sql.raw(fkColumnNameDB)} = ${entityId}
-		`);
-
-		// Create new embeddings
+		await this.deleteEmbeddings(entityId);
 		await this.embedEntity(entityId, content);
-	}
-
-	/**
-	 * Perform similarity search across all embeddings
-	 * Groups by entity to return unique entities with their best matching chunk
-	 */
-	async similaritySearch(
-		query: string,
-		limit = 5,
-	): Promise<
-		Array<{
-			entityId: number;
-			chunkText: string;
-			similarity: number;
-		}>
-	> {
-		try {
-			// Generate query embedding
-			const queryEmbedding = await BaseEmbeddingService.embeddings.embedQuery(query);
-			const embeddingString = `[${queryEmbedding.join(",")}]`;
-
-			const embeddingsTable = this.getEmbeddingsTable();
-			const fkColumnNameDB = this.getFKColumnNameDB();
-
-			// Perform vector similarity search with GROUP BY to avoid duplicate entities
-			// Uses DISTINCT ON for PostgreSQL to get the best match per entity
-			const results = await db.execute<{
-				entity_id: number;
-				chunk_text: string;
-				similarity: number;
-			}>(sql`
-				SELECT DISTINCT ON (${sql.raw(fkColumnNameDB)})
-					${sql.raw(fkColumnNameDB)} as entity_id,
-					chunk_text,
-					1 - (embedding <=> ${embeddingString}::vector) as similarity
-				FROM ${embeddingsTable}
-				ORDER BY ${sql.raw(fkColumnNameDB)}, similarity DESC
-				LIMIT ${limit}
-			`);
-
-			// Re-sort by similarity since DISTINCT ON requires ordering by the distinct column first
-			const sortedResults = results.rows.sort((a, b) => b.similarity - a.similarity);
-
-			return sortedResults.slice(0, limit).map((row) => ({
-				entityId: row.entity_id,
-				chunkText: row.chunk_text,
-				similarity: row.similarity,
-			}));
-		} catch (error) {
-			console.error("Error performing similarity search:", error);
-			throw error;
-		}
 	}
 }

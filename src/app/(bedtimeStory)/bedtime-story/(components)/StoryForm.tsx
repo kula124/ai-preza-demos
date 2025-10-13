@@ -64,7 +64,7 @@ export default function StoryForm({ onSubmit, isGenerating }: StoryFormProps) {
 					value={formData.age}
 					onChange={(e) => setFormData({ ...formData, age: e.target.value })}
 					placeholder="Enter age (e.g., 5)"
-					min="2"
+					min="0"
 					max="12"
 					className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-xl focus:border-purple-500 dark:focus:border-purple-400 focus:outline-none transition-colors text-lg"
 				/>

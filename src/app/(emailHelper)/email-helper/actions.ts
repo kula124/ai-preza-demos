@@ -70,9 +70,9 @@ export async function generateEmailAction(formData: EmailFormData): Promise<{
 		console.log("Prompt length:", prompt.length);
 
 		// Call Claude API (using Haiku for faster, cheaper email generation)
-		console.log("Calling Claude API with model: claude-3-5-haiku-20241022");
+		console.log("Calling Claude API with model: claude-3-5-haiku-20250110");
 		const message = await anthropic.messages.create({
-			model: "claude-3-5-haiku-20241022",
+			model: "claude-3-5-haiku-20250110",
 			max_tokens: 1500,
 			messages: [{ role: "user", content: prompt }],
 		});

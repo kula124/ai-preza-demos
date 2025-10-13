@@ -6,6 +6,7 @@ import { ChatAnthropic } from "@langchain/anthropic";
 import { Observable } from "rxjs";
 import { z } from "zod";
 import { RAGService } from "./RAGService";
+import { StoryEmbeddingService } from "./StoryEmbeddingService";
 import { ApplicationEmbeddingService } from "./ApplicationEmbeddingService";
 import { db } from "@/lib/db";
 import { openPositions, reviewedApplications, applicationPositionMatches } from "@/repo/schema";
@@ -19,16 +20,23 @@ export interface StandardizedToolResponse {
 		applications?: Array<any>;
 		matches?: Array<any>;
 		confirmation?: any;
+		toolUsage?: {
+			name: string;
+			input: any;
+		};
 		toolType?: string;
 	};
 }
 
 const SYSTEM_PROMPT = `You are a helpful AI assistant with access to multiple systems:
 1. Document database - Search uploaded documents for information
-2. Job management system - Search positions, find candidate matches, and manage job closures
+2. Bedtime stories database - Personalized stories for children
+3. Job management system - Search positions, find candidate matches, and manage job closures
+4. Job applications database - Reviewed job applications
 
 Available capabilities:
 - Search documents: Use 'search_documents' to find information in uploaded PDFs
+- Search stories: Use 'search_stories' to find bedtime stories
 - Search job positions: Use 'search_open_positions' to find open roles
 - Get candidate matches: Use 'get_position_matches' to see n8n-scored candidates for a position
 - Search applications: Use 'search_applications' to find candidates by skills/experience
@@ -44,7 +52,7 @@ Be concise and accurate.`;
 
 const USER_PROMPT_TEMPLATE = `User question: {message}
 
-Please search the document database and provide a helpful answer.`;
+Please search the appropriate database and provide a helpful answer.`;
 
 /**
  * Tool for searching documents via vector similarity
@@ -77,24 +85,89 @@ const createSearchTool = () => {
 		},
 		{
 			name: "search_documents",
-			description: `Search through all uploaded documents using semantic similarity.
+			description: `Search through uploaded PDF documents using semantic similarity.
 
-This tool searches across all PDF documents that have been uploaded to the system.
-It uses vector embeddings to find the most relevant passages related to your query.
+KEYWORD RULES - Use this tool ONLY if the user's question mentions:
+- "document", "PDF", "policy", "procedure", "guideline", "uploaded"
+- Company-specific topics like "travel expense", "sick leave", "remote work"
 
-Use this tool whenever the user asks about:
-- Information contained in their documents
+DO NOT use this tool if the question mentions:
+- "bedtime", "story", "stories", "character", "tale" → use search_stories instead
+- "job", "application", "candidate", "resume", "applicant" → use search_applications instead
+
+Use this tool for:
 - Company rules, policies, or guidelines
 - Travel expense procedures
-- Any topic that might be documented
+- Technical documentation
+- Any uploaded PDF content
 
-FORMAT: You can either pass the query directly or use "search: [keywords]" format
 EXAMPLES:
 - "What are the travel expense rules?"
-- "Find information about sick leave policy search: sick leave"
+- "Find information about sick leave policy"
 - "What does the document say about remote work?"`,
 			schema: z.object({
 				query: z.string().describe("The search query to find relevant documents"),
+			}),
+		},
+	);
+};
+
+/**
+ * Tool for searching bedtime stories via vector similarity
+ */
+const createStorySearchTool = () => {
+	return tool(
+		async (input: { query: string }) => {
+			try {
+				const storyService = new StoryEmbeddingService();
+				const results = await storyService.similaritySearch(input.query, 3);
+
+				return JSON.stringify({
+					data: {
+						sources: results.map((r) => ({
+							content: r.content,
+							filename: `Story: ${r.entity.topic || "Bedtime Story"} (Age ${r.entity.child_age || r.entity.childAge})`,
+							storyId: r.entityId,
+							details: r.entity,
+						})),
+						searchQuery: input.query,
+					},
+				});
+			} catch (error) {
+				console.error("Story search tool error:", error);
+				return JSON.stringify({
+					error: "Failed to search stories",
+				});
+			}
+		},
+		{
+			name: "search_stories",
+			description: `Search through generated bedtime stories using semantic similarity.
+
+KEYWORD RULES - Use this tool if the user's question mentions ANY of these keywords:
+- "bedtime", "story", "stories", "tale", "tales"
+- "character", "characters", "protagonist", "hero"
+- Story-related terms like "plot", "narrative", "adventure"
+
+IMPORTANT: If you see "bedtime" or "story" in the question, ALWAYS use this tool!
+
+This searches the actual generated bedtime stories in our database, not documents about stories.
+
+Use this tool for:
+- Questions about story characters (who, what characters appear)
+- Story topics (animals, space, adventure, etc.)
+- Story themes or lessons
+- Stories for specific age groups
+- Finding stories with certain content
+
+EXAMPLES:
+- "Can you tell me the names of the main characters in the bedtime stories?"
+- "Find stories about animals"
+- "Show me adventure stories for 5 year olds"
+- "What characters appear in the stories?"
+- "What stories teach about kindness?"`,
+			schema: z.object({
+				query: z.string().describe("The search query to find relevant stories"),
 			}),
 		},
 	);
@@ -226,7 +299,7 @@ Use this when the user asks:
 };
 
 /**
- * Tool for semantic search across applications
+ * Tool for semantic search across applications (combined both implementations)
  */
 const createSearchApplicationsTool = () => {
 	return tool(
@@ -275,13 +348,19 @@ const createSearchApplicationsTool = () => {
 			name: "search_applications",
 			description: `Search for candidate applications using semantic similarity.
 
+KEYWORD RULES - Use this tool if the user's question mentions ANY of these keywords:
+- "job", "jobs", "application", "applications", "applicant", "applicants"
+- "candidate", "candidates", "resume", "resumes", "CV"
+- "hire", "hiring", "recruit", "recruiting"
+
 Uses vector embeddings to find applications matching the search query.
 Great for finding candidates by skills, experience, or qualifications.
 
 Use this when the user asks:
 - "Find Python developers"
 - "Show me candidates with React experience"
-- "Who has worked with AWS?"`,
+- "Who has worked with AWS?"
+- "Find applications from software engineers"`,
 			schema: z.object({
 				query: z.string().describe("Search query describing desired skills/experience"),
 				limit: z.number().optional().describe("Maximum number of results (default: 5)"),
@@ -407,6 +486,7 @@ export class AgentService {
 						llm: streamingLlm,
 						tools: [
 							createSearchTool(),
+							createStorySearchTool(),
 							createSearchOpenPositionsTool(),
 							createGetPositionMatchesTool(),
 							createSearchApplicationsTool(),
@@ -418,14 +498,31 @@ export class AgentService {
 
 					await streamingAgent.invoke(
 						{
-							messages: [
-								{ role: "user", content: formattedPrompt },
-							],
+							messages: [{ role: "user", content: formattedPrompt }],
 						},
 						{
 							configurable: { thread_id },
 							callbacks: [
 								{
+									// biome-ignore lint/suspicious/noExplicitAny: LangChain callback type
+									handleToolStart(tool: any, input: string) {
+										try {
+											const toolName = tool.name || "unknown_tool";
+											const toolInput = typeof input === 'string' ? JSON.parse(input) : input;
+
+											subscriber.next({
+												data: {
+													toolUsage: {
+														name: toolName,
+														input: toolInput,
+													},
+													toolType: "tool_start",
+												},
+											});
+										} catch (error) {
+											console.error("Error handling tool start:", error);
+										}
+									},
 									// biome-ignore lint/suspicious/noExplicitAny: LangChain callback type
 									handleToolEnd(output: any) {
 										try {
@@ -463,6 +560,7 @@ export class AgentService {
 			llm: llm,
 			tools: [
 				createSearchTool(),
+				createStorySearchTool(),
 				createSearchOpenPositionsTool(),
 				createGetPositionMatchesTool(),
 				createSearchApplicationsTool(),
@@ -477,9 +575,7 @@ export class AgentService {
 
 		const results = await agent.invoke(
 			{
-				messages: [
-					{ role: "user", content: formattedPrompt },
-				],
+				messages: [{ role: "user", content: formattedPrompt }],
 			},
 			{ configurable: { thread_id } },
 		);

@@ -3,6 +3,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { db } from "@/lib/db";
 import { stories } from "@/repo/schema";
+import { StoryEmbeddingService } from "@/services/StoryEmbeddingService";
 import type { StoryFormData } from "./types";
 
 if (!process.env.ANTHROPIC_API_KEY) {
@@ -46,7 +47,7 @@ Please write only the story content, no title or additional formatting. Start di
 
 		// Generate story using Claude
 		const message = await anthropic.messages.create({
-			model: "claude-3-5-sonnet-20241022",
+			model: "claude-3-7-sonnet-20250219",
 			max_tokens: 1500,
 			messages: [
 				{
@@ -92,6 +93,12 @@ export async function saveStoryAction(formData: StoryFormData, story: string) {
 			})
 			.returning();
 
+		// Generate embeddings for the story (async, don't block the response)
+		const embeddingService = new StoryEmbeddingService();
+		embeddingService.embedEntity(savedStory.id, story).catch((error) => {
+			console.error("Error generating embeddings for story:", error);
+		});
+
 		return {
 			success: true,
 			storyId: savedStory.id,
@@ -123,6 +130,37 @@ export async function getStoriesAction() {
 			success: false,
 			error: "Failed to fetch stories.",
 			stories: [],
+		};
+	}
+}
+
+export async function getStoryAction(storyId: number) {
+	try {
+		const { eq } = await import("drizzle-orm");
+		const [story] = await db
+			.select()
+			.from(stories)
+			.where(eq(stories.id, storyId))
+			.limit(1);
+
+		if (!story) {
+			return {
+				success: false,
+				error: "Story not found.",
+				story: null,
+			};
+		}
+
+		return {
+			success: true,
+			story,
+		};
+	} catch (error) {
+		console.error("Error fetching story:", error);
+		return {
+			success: false,
+			error: "Failed to fetch story.",
+			story: null,
 		};
 	}
 }

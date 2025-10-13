@@ -48,7 +48,7 @@ export default function StoryDisplay({
 								type="button"
 								onClick={handleSave}
 								disabled={isSaving}
-								className="bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-2 rounded-full flex items-center gap-2 transition-all duration-200 disabled:opacity-50"
+								className="bg-pink-400 hover:bg-pink-500 text-white px-4 py-2 rounded-full flex items-center gap-2 transition-all duration-200 disabled:opacity-50"
 							>
 								<Save className="w-4 h-4" />
 								{isSaving ? "Saving..." : "Save"}
@@ -57,7 +57,7 @@ export default function StoryDisplay({
 						<button
 							type="button"
 							onClick={onBack}
-							className="bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-2 rounded-full flex items-center gap-2 transition-all duration-200"
+							className="bg-pink-400 hover:bg-pink-500 text-white px-4 py-2 rounded-full flex items-center gap-2 transition-all duration-200"
 						>
 							<ArrowLeft className="w-4 h-4" />
 							New Story

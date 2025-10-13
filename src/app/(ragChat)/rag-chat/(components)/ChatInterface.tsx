@@ -114,7 +114,13 @@ export default function ChatInterface({
 				const update: Partial<IMessage> = { isStreaming: false };
 
 				// Handle different tool types
-				if (toolType === "positions" && toolData.data.positions) {
+				if (toolType === "tool_start" && toolData.data.toolUsage) {
+					// Tool usage indicator - append to existing text
+					const toolName = toolData.data.toolUsage.name;
+					const displayName = toolName.replace(/_/g, ' ');
+					update.text = `${lastMessage.text}\n\n🔧 Using tool: ${displayName}`;
+					update.toolUsage = toolData.data.toolUsage;
+				} else if (toolType === "positions" && toolData.data.positions) {
 					update.positions = toolData.data.positions;
 					update.searchQuery = toolData.data.searchQuery;
 					update.toolType = "positions";

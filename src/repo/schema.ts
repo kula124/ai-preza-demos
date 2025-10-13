@@ -22,6 +22,17 @@ export const stories = pgTable("stories", {
 	createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const storyEmbeddings = pgTable("story_embeddings", {
+	id: serial("id").primaryKey(),
+	storyId: integer("story_id")
+		.references(() => stories.id, { onDelete: "cascade" })
+		.notNull(),
+	chunkText: text("chunk_text").notNull(),
+	chunkIndex: integer("chunk_index").notNull(),
+	// Vector embeddings - dimension 1536 for OpenAI text-embedding-3-small
+	embedding: vector("embedding", { dimensions: 1536 }),
+});
+
 // ==========================================
 // EMAIL HELPER TABLES
 // ==========================================
@@ -76,6 +87,9 @@ export const chatHistory = pgTable("chat_history", {
 export type Story = typeof stories.$inferSelect;
 export type NewStory = typeof stories.$inferInsert;
 
+export type StoryEmbedding = typeof storyEmbeddings.$inferSelect;
+export type NewStoryEmbedding = typeof storyEmbeddings.$inferInsert;
+
 export type Email = typeof emails.$inferSelect;
 export type NewEmail = typeof emails.$inferInsert;
 
@@ -118,6 +132,19 @@ export const reviewedApplications = pgTable("reviewed_applications", {
 	createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const applicationEmbeddings = pgTable("application_embeddings", {
+	id: serial("id").primaryKey(),
+	applicationId: integer("application_id")
+		.references(() => reviewedApplications.id, { onDelete: "cascade" })
+		.notNull(),
+	chunkText: text("chunk_text").notNull(),
+	chunkIndex: integer("chunk_index").notNull(),
+	// Optional: Section type for better context
+	sectionType: text("section_type"), // 'experience', 'skills', 'education', 'summary', etc.
+	// Vector embeddings - dimension 1536 for OpenAI text-embedding-3-small
+	embedding: vector("embedding", { dimensions: 1536 }),
+});
+
 export const applicationPositionMatches = pgTable(
 	"application_position_matches",
 	{
@@ -151,6 +178,9 @@ export type NewOpenPosition = typeof openPositions.$inferInsert;
 
 export type ReviewedApplication = typeof reviewedApplications.$inferSelect;
 export type NewReviewedApplication = typeof reviewedApplications.$inferInsert;
+
+export type ApplicationEmbedding = typeof applicationEmbeddings.$inferSelect;
+export type NewApplicationEmbedding = typeof applicationEmbeddings.$inferInsert;
 
 export type ApplicationPositionMatch =
 	typeof applicationPositionMatches.$inferSelect;
