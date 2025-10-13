@@ -161,18 +161,6 @@ export const applicationPositionMatches = pgTable(
 	},
 );
 
-export const applicationEmbeddings = pgTable("application_embeddings", {
-	id: serial("id").primaryKey(),
-	applicationId: integer("application_id")
-		.references(() => reviewedApplications.id, { onDelete: "cascade" })
-		.notNull(),
-	chunkText: text("chunk_text").notNull(),
-	chunkIndex: integer("chunk_index").notNull(),
-	sectionType: text("section_type"), // Optional metadata
-	// Vector embeddings - dimension 1536 for OpenAI text-embedding-3-small
-	embedding: vector("embedding", { dimensions: 1536 }),
-});
-
 export type OpenPosition = typeof openPositions.$inferSelect;
 export type NewOpenPosition = typeof openPositions.$inferInsert;
 
@@ -186,6 +174,3 @@ export type ApplicationPositionMatch =
 	typeof applicationPositionMatches.$inferSelect;
 export type NewApplicationPositionMatch =
 	typeof applicationPositionMatches.$inferInsert;
-
-export type ApplicationEmbedding = typeof applicationEmbeddings.$inferSelect;
-export type NewApplicationEmbedding = typeof applicationEmbeddings.$inferInsert;
