@@ -12,7 +12,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "embed-applications": "tsx scripts/embed-applications.ts"
+    "embed-applications": "tsx scripts/embed-applications.ts",
+    "seed-positions": "npx tsx --env-file=.env scripts/seed-positions.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.65.0",
@@ -24,6 +25,7 @@
     "@langchain/openai": "^0.6.14",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "dotenv": "^17.2.3",
     "drizzle-kit": "^0.31.5",
     "drizzle-orm": "^0.44.6",
     "langchain": "^0.3.35",
