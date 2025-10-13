@@ -128,6 +128,7 @@ export abstract class BaseEmbeddingService {
 
 	/**
 	 * Perform similarity search across all embeddings
+	 * Groups by entity to return unique entities with their best matching chunk
 	 */
 	async similaritySearch(
 		query: string,
@@ -147,22 +148,26 @@ export abstract class BaseEmbeddingService {
 			const embeddingsTable = this.getEmbeddingsTable();
 			const fkColumnNameDB = this.getFKColumnNameDB();
 
-			// Perform vector similarity search
+			// Perform vector similarity search with GROUP BY to avoid duplicate entities
+			// Uses DISTINCT ON for PostgreSQL to get the best match per entity
 			const results = await db.execute<{
 				entity_id: number;
 				chunk_text: string;
 				similarity: number;
 			}>(sql`
-				SELECT
+				SELECT DISTINCT ON (${sql.raw(fkColumnNameDB)})
 					${sql.raw(fkColumnNameDB)} as entity_id,
 					chunk_text,
 					1 - (embedding <=> ${embeddingString}::vector) as similarity
 				FROM ${embeddingsTable}
-				ORDER BY similarity DESC
+				ORDER BY ${sql.raw(fkColumnNameDB)}, similarity DESC
 				LIMIT ${limit}
 			`);
 
-			return results.rows.map((row) => ({
+			// Re-sort by similarity since DISTINCT ON requires ordering by the distinct column first
+			const sortedResults = results.rows.sort((a, b) => b.similarity - a.similarity);
+
+			return sortedResults.slice(0, limit).map((row) => ({
 				entityId: row.entity_id,
 				chunkText: row.chunk_text,
 				similarity: row.similarity,

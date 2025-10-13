@@ -134,8 +134,8 @@ export default function PositionsPage() {
 							key={position.id}
 							className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 hover:border-blue-300 dark:hover:border-blue-700 transition-all overflow-hidden"
 						>
-							{/* Clickable Card Content */}
-							<Link href={`/jobs/positions/${position.id}`} className="block p-6">
+							{/* Card Content */}
+							<div className="p-6">
 								{/* Header */}
 								<div className="flex items-start justify-between mb-4">
 									<div className="flex-1">
@@ -166,7 +166,6 @@ export default function PositionsPage() {
 										</div>
 										<Link
 											href={`/jobs/applications/${position.closedByApplication.id}`}
-											onClick={(e) => e.stopPropagation()}
 											className="text-sm text-green-600 dark:text-green-400 hover:underline mt-1 inline-block"
 										>
 											View {position.closedByApplication.candidateName}'s application →
@@ -205,31 +204,29 @@ export default function PositionsPage() {
 										</span>
 									)}
 								</div>
-							</Link>
+							</div>
 
 							{/* Actions */}
 							<div className="flex gap-2 px-6 pb-6 pt-4 border-t border-gray-200 dark:border-gray-800">
+								<Link
+									href={`/jobs/positions/${position.id}`}
+									className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center justify-center gap-2 text-sm font-medium"
+								>
+									View Position
+								</Link>
 								<button
 									type="button"
-									onClick={(e) => {
-										e.preventDefault();
-										setEditingPosition(position);
-									}}
-									className="flex-1 py-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm"
+									onClick={() => setEditingPosition(position)}
+									className="py-2 px-3 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm"
 								>
 									<Edit className="h-4 w-4" />
-									Edit
 								</button>
 								<button
 									type="button"
-									onClick={(e) => {
-										e.preventDefault();
-										handleDelete(position.id);
-									}}
-									className="flex-1 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm"
+									onClick={() => handleDelete(position.id)}
+									className="py-2 px-3 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm"
 								>
 									<Trash2 className="h-4 w-4" />
-									Delete
 								</button>
 							</div>
 						</div>

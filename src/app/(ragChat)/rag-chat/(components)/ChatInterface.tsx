@@ -20,6 +20,10 @@ import type { StandardizedToolResponse } from "@/services/AgentService";
 import type { IMessage } from "./types";
 import SourceResults from "./SourceResults";
 import MessageMarkdown from "@/components/MessageMarkdown";
+import JobPositionResults from "./JobPositionResults";
+import ApplicationResults from "./ApplicationResults";
+import PositionMatchesResults from "./PositionMatchesResults";
+import JobActionConfirmation from "./JobActionConfirmation";
 
 interface ChatInterfaceProps {
 	messages: IMessage[];
@@ -99,24 +103,41 @@ export default function ChatInterface({
 		}
 	}, [streamedContent, isStreaming, setMessages]);
 
-	// Update messages with tool data (sources)
+	// Update messages with tool data
 	useEffect(() => {
-		if (toolData?.data && "sources" in toolData.data) {
-			const sources = toolData.data.sources as Array<{
-				content: string;
-				filename: string;
-			}>;
-			const searchQuery = toolData.data.searchQuery as string;
-
+		if (toolData?.data) {
 			setMessages((prev) => {
 				const updatedMessages = [...prev];
 				const lastMessage = updatedMessages[updatedMessages.length - 1];
 
+				const toolType = toolData.data.toolType;
+				const update: Partial<IMessage> = { isStreaming: false };
+
+				// Handle different tool types
+				if (toolType === "positions" && toolData.data.positions) {
+					update.positions = toolData.data.positions;
+					update.searchQuery = toolData.data.searchQuery;
+					update.toolType = "positions";
+				} else if (toolType === "applications" && toolData.data.applications) {
+					update.applications = toolData.data.applications;
+					update.searchQuery = toolData.data.searchQuery;
+					update.toolType = "applications";
+				} else if (toolType === "matches" && toolData.data.matches) {
+					update.matches = toolData.data.matches;
+					update.toolType = "matches";
+				} else if (toolType === "confirmation" && toolData.data.confirmation) {
+					update.confirmation = toolData.data.confirmation;
+					update.toolType = "confirmation";
+				} else if ("sources" in toolData.data && toolData.data.sources) {
+					// Document search results
+					update.sources = toolData.data.sources;
+					update.searchQuery = toolData.data.searchQuery;
+					update.toolType = "sources";
+				}
+
 				updatedMessages[updatedMessages.length - 1] = {
 					...lastMessage,
-					sources: sources,
-					searchQuery: searchQuery,
-					isStreaming: false,
+					...update,
 				};
 
 				return updatedMessages;
@@ -222,11 +243,11 @@ export default function ChatInterface({
 										<Bot className="h-8 w-8 text-purple-800 dark:text-purple-400" />
 									</div>
 									<h3 className="text-xl font-semibold text-gray-900 dark:text-slate-50 mb-2">
-										RAG Chat Assistant
+										AI Assistant
 									</h3>
 									<p className="text-gray-500 dark:text-slate-500">
-										Ask questions about your uploaded documents. I'll search
-										through them and provide answers with source citations.
+										Ask questions about your documents, search for jobs, find
+										candidates, and manage positions.
 									</p>
 								</div>
 								<div className="grid grid-cols-1 gap-2 text-sm">
@@ -236,8 +257,9 @@ export default function ChatInterface({
 										</p>
 										<ul className="text-gray-500 dark:text-slate-500 space-y-1">
 											<li>• "What are the travel expense rules?"</li>
-											<li>• "Summarize the sick leave policy"</li>
-											<li>• "How do I submit a reimbursement request?"</li>
+											<li>• "Show me React developer positions"</li>
+											<li>• "Find Python developers"</li>
+											<li>• "Get candidates for job JOB001"</li>
 										</ul>
 									</div>
 								</div>
@@ -273,14 +295,56 @@ export default function ChatInterface({
 									</div>
 								</div>
 
-								{/* Display sources */}
-								{!message.isUser &&
-									message.sources &&
-									message.sources.length > 0 && (
-										<div className="max-w-[100%] self-start">
-											<SourceResults sources={message.sources} />
-										</div>
-									)}
+								{/* Display tool results */}
+								{!message.isUser && (
+									<>
+										{/* Document sources */}
+										{message.sources && message.sources.length > 0 && (
+											<div className="max-w-[100%] self-start">
+												<SourceResults sources={message.sources} />
+											</div>
+										)}
+
+										{/* Job positions */}
+										{message.positions && message.positions.length > 0 && (
+											<div className="max-w-[100%] self-start">
+												<JobPositionResults
+													positions={message.positions}
+													searchQuery={message.searchQuery}
+												/>
+											</div>
+										)}
+
+										{/* Applications */}
+										{message.applications && message.applications.length > 0 && (
+											<div className="max-w-[100%] self-start">
+												<ApplicationResults
+													applications={message.applications}
+													searchQuery={message.searchQuery}
+												/>
+											</div>
+										)}
+
+										{/* Position matches */}
+										{message.matches && message.matches.length > 0 && (
+											<div className="max-w-[100%] self-start">
+												<PositionMatchesResults
+													matches={message.matches}
+													positionId=""
+												/>
+											</div>
+										)}
+
+										{/* Confirmation */}
+										{message.confirmation && (
+											<div className="max-w-[100%] self-start">
+												<JobActionConfirmation
+													confirmation={message.confirmation}
+												/>
+											</div>
+										)}
+									</>
+								)}
 							</div>
 						))
 					)}
@@ -304,7 +368,7 @@ export default function ChatInterface({
 							value={inputText}
 							onChange={handleInputChange}
 							onKeyDown={handleKeyDown}
-							placeholder="Ask about your documents..."
+							placeholder="Ask about documents, jobs, or candidates..."
 							className="flex-1 h-10 min-h-10 px-4 py-2 border border-gray-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-50 focus:outline-none focus:ring-2 focus:ring-purple-600 resize-none"
 						/>
 						<button

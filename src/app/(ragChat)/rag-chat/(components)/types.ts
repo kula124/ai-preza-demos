@@ -5,4 +5,9 @@ export interface IMessage {
 	isStreaming?: boolean;
 	sources?: Array<{ content: string; filename: string }>;
 	searchQuery?: string;
+	positions?: Array<any>;
+	applications?: Array<any>;
+	matches?: Array<any>;
+	confirmation?: any;
+	toolType?: string;
 }
