@@ -1,13 +1,13 @@
 "use server";
 
-import { db } from "@/lib/db";
+import { getDb } from "@/lib/db";
 import { openPositions, reviewedApplications } from "@/repo/schema";
 import { eq, desc } from "drizzle-orm";
 import type { PositionFormData } from "../types";
 
 export async function createPositionAction(formData: PositionFormData) {
 	try {
-		const result = await db
+		const result = await getDb()
 			.insert(openPositions)
 			.values({
 				id: formData.id,
@@ -42,7 +42,7 @@ export async function updatePositionAction(
 	formData: Partial<PositionFormData>,
 ) {
 	try {
-		const result = await db
+		const result = await getDb()
 			.update(openPositions)
 			.set({
 				...formData,
@@ -66,7 +66,7 @@ export async function updatePositionAction(
 
 export async function deletePositionAction(id: string) {
 	try {
-		await db.delete(openPositions).where(eq(openPositions.id, id));
+		await getDb().delete(openPositions).where(eq(openPositions.id, id));
 
 		return {
 			success: true,
@@ -85,7 +85,7 @@ export async function getPositionsAction(): Promise<{
 	positions: import("@/repo/schema").OpenPositionWithApplication[];
 }> {
 	try {
-		const positions = await db
+		const positions = await getDb()
 			.select({
 				position: openPositions,
 				closedByApplication: reviewedApplications,
@@ -118,7 +118,7 @@ export async function getPositionsAction(): Promise<{
 
 export async function getPositionByIdAction(id: string) {
 	try {
-		const result = await db
+		const result = await getDb()
 			.select()
 			.from(openPositions)
 			.where(eq(openPositions.id, id))

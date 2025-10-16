@@ -2,7 +2,7 @@ import { OpenAIEmbeddings } from "@langchain/openai";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import { sql, type SQL } from "drizzle-orm";
 import type { PgTable } from "drizzle-orm/pg-core";
-import { db } from "@/lib/db";
+import { getDb } from "@/lib/db";
 
 /**
  * Base service for handling embeddings across different entity types
@@ -113,7 +113,7 @@ export abstract class BaseEmbeddingService {
 		}));
 
 		const table = this.getEmbeddingsTable();
-		await db.insert(table).values(chunkRecords);
+		await getDb().insert(table).values(chunkRecords);
 	}
 
 	/**
@@ -135,7 +135,7 @@ export abstract class BaseEmbeddingService {
 		const contentFieldDB = this.getContentFieldNameDB();
 
 		// Build dynamic SQL query
-		const results = await db.execute<{
+		const results = await getDb().execute<{
 			content: string;
 			entity_id: number;
 			entity_data: any;
@@ -174,7 +174,7 @@ export abstract class BaseEmbeddingService {
 		const table = this.getEmbeddingsTable();
 		const fkColumnDB = this.getFKColumnNameDB();
 
-		await db.execute(sql`
+		await getDb().execute(sql`
 			DELETE FROM ${table}
 			WHERE ${sql.identifier(fkColumnDB)} = ${entityId}
 		`);

@@ -1,6 +1,6 @@
 "use server";
 
-import { db } from "@/lib/db";
+import { getDb } from "@/lib/db";
 import {
 	reviewedApplications,
 	applicationPositionMatches,
@@ -9,7 +9,7 @@ import { eq, desc } from "drizzle-orm";
 
 export async function getApplicationsAction() {
 	try {
-		const applications = await db
+		const applications = await getDb()
 			.select()
 			.from(reviewedApplications)
 			.orderBy(desc(reviewedApplications.dateReviewed));
@@ -30,7 +30,7 @@ export async function getApplicationsAction() {
 export async function getApplicationByIdAction(id: number) {
 	try {
 		// Get application
-		const applicationResult = await db
+		const applicationResult = await getDb()
 			.select()
 			.from(reviewedApplications)
 			.where(eq(reviewedApplications.id, id))
@@ -44,7 +44,7 @@ export async function getApplicationByIdAction(id: number) {
 		}
 
 		// Get position matches
-		const matches = await db
+		const matches = await getDb()
 			.select()
 			.from(applicationPositionMatches)
 			.where(eq(applicationPositionMatches.applicationId, id));
@@ -67,7 +67,7 @@ export async function getApplicationByIdAction(id: number) {
 
 export async function deleteApplicationAction(id: number) {
 	try {
-		await db
+		await getDb()
 			.delete(reviewedApplications)
 			.where(eq(reviewedApplications.id, id));
 

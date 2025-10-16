@@ -1,7 +1,7 @@
 "use server";
 
 import Anthropic from "@anthropic-ai/sdk";
-import { db } from "@/lib/db";
+import { getDb } from "@/lib/db";
 import { emails } from "@/repo/schema";
 import { desc, eq } from "drizzle-orm";
 import type { EmailFormData, GeneratedEmail } from "./types";
@@ -103,7 +103,7 @@ export async function saveEmailAction(
 	generatedEmail: GeneratedEmail,
 ): Promise<{ success: boolean; emailId?: number; error?: string }> {
 	try {
-		const result = await db
+		const result = await getDb()
 			.insert(emails)
 			.values({
 				emailType: formData.emailType,
@@ -130,7 +130,7 @@ export async function saveEmailAction(
 
 export async function getEmailsAction() {
 	try {
-		const allEmails = await db
+		const allEmails = await getDb()
 			.select()
 			.from(emails)
 			.orderBy(desc(emails.createdAt));
@@ -150,7 +150,7 @@ export async function getEmailsAction() {
 
 export async function deleteEmailAction(emailId: number) {
 	try {
-		await db.delete(emails).where(eq(emails.id, emailId));
+		await getDb().delete(emails).where(eq(emails.id, emailId));
 
 		return {
 			success: true,

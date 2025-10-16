@@ -11,8 +11,8 @@ WORKDIR /app
 # Copy package files
 COPY package.json package-lock.json* ./
 
-# Install dependencies
-RUN npm ci
+# Install dependencies with legacy peer deps
+RUN npm ci --legacy-peer-deps
 
 # Builder stage
 FROM base AS builder
@@ -22,8 +22,12 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Disable telemetry during build
+# Disable telemetry and set dummy values during build
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV BUILD=true
+ENV OPENAI_API_KEY=sk-dummy-key-for-build-only
+ENV ANTHROPIC_API_KEY=sk-ant-dummy-key-for-build-only
+ENV DATABASE_URL=postgresql://dummy:dummy@localhost:5432/dummy
 
 # Build the application
 RUN npm run build

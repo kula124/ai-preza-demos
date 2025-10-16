@@ -7,7 +7,7 @@
 import { config } from "dotenv";
 config({ path: ".env" });
 
-import { db } from "../src/lib/db";
+import { getDb } from "../src/lib/db";
 import { openPositions, reviewedApplications, applicationPositionMatches } from "../src/repo/schema";
 import { sql } from "drizzle-orm";
 
@@ -237,6 +237,7 @@ const samplePositions = [
 
 async function main() {
 	try {
+		const db = getDb();
 		console.log("🧹 Truncating tables...\n");
 
 		// Truncate tables in the correct order (respecting foreign key constraints)

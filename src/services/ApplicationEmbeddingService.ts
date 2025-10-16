@@ -1,7 +1,7 @@
 import type { PgTable } from "drizzle-orm/pg-core";
 import { BaseEmbeddingService } from "./BaseEmbeddingService";
 import { applicationEmbeddings, reviewedApplications } from "@/repo/schema";
-import { db } from "@/lib/db";
+import { getDb } from "@/lib/db";
 import { eq, sql } from "drizzle-orm";
 
 /**
@@ -42,7 +42,7 @@ export class ApplicationEmbeddingService extends BaseEmbeddingService {
 	async findUnembeddedApplications(): Promise<
 		Array<{ id: number; candidateName: string; fullMarkdownReview: string }>
 	> {
-		const results = await db.execute<{
+		const results = await getDb().execute<{
 			id: number;
 			candidate_name: string;
 			full_markdown_review: string;
@@ -102,7 +102,7 @@ export class ApplicationEmbeddingService extends BaseEmbeddingService {
 	 * Check if an application has embeddings
 	 */
 	async hasEmbeddings(applicationId: number): Promise<boolean> {
-		const results = await db.execute<{ count: number }>(sql`
+		const results = await getDb().execute<{ count: number }>(sql`
 			SELECT COUNT(*) as count
 			FROM ${applicationEmbeddings}
 			WHERE application_id = ${applicationId}
@@ -120,7 +120,7 @@ export class ApplicationEmbeddingService extends BaseEmbeddingService {
 		unembeddedApplications: number;
 		totalChunks: number;
 	}> {
-		const stats = await db.execute<{
+		const stats = await getDb().execute<{
 			total_applications: number;
 			embedded_applications: number;
 			total_chunks: number;

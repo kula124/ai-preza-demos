@@ -1,7 +1,7 @@
 "use server";
 
 import Anthropic from "@anthropic-ai/sdk";
-import { db } from "@/lib/db";
+import { getDb } from "@/lib/db";
 import { stories } from "@/repo/schema";
 import { StoryEmbeddingService } from "@/services/StoryEmbeddingService";
 import type { StoryFormData } from "./types";
@@ -82,7 +82,7 @@ Please write only the story content, no title or additional formatting. Start di
 
 export async function saveStoryAction(formData: StoryFormData, story: string) {
 	try {
-		const [savedStory] = await db
+		const [savedStory] = await getDb()
 			.insert(stories)
 			.values({
 				topic: formData.interests.join(", "),
@@ -115,7 +115,7 @@ export async function saveStoryAction(formData: StoryFormData, story: string) {
 export async function getStoriesAction() {
 	try {
 		const { desc } = await import("drizzle-orm");
-		const allStories = await db
+		const allStories = await getDb()
 			.select()
 			.from(stories)
 			.orderBy(desc(stories.createdAt));
@@ -137,7 +137,7 @@ export async function getStoriesAction() {
 export async function getStoryAction(storyId: number) {
 	try {
 		const { eq } = await import("drizzle-orm");
-		const [story] = await db
+		const [story] = await getDb()
 			.select()
 			.from(stories)
 			.where(eq(stories.id, storyId))
@@ -168,7 +168,7 @@ export async function getStoryAction(storyId: number) {
 export async function deleteStoryAction(storyId: number) {
 	try {
 		const { eq } = await import("drizzle-orm");
-		await db.delete(stories).where(eq(stories.id, storyId));
+		await getDb().delete(stories).where(eq(stories.id, storyId));
 
 		return {
 			success: true,

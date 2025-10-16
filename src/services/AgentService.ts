@@ -8,7 +8,7 @@ import { z } from "zod";
 import { RAGService } from "./RAGService";
 import { StoryEmbeddingService } from "./StoryEmbeddingService";
 import { ApplicationEmbeddingService } from "./ApplicationEmbeddingService";
-import { db } from "@/lib/db";
+import { getDb } from "@/lib/db";
 import { openPositions, reviewedApplications, applicationPositionMatches } from "@/repo/schema";
 import { eq, sql, ilike, or, inArray } from "drizzle-orm";
 
@@ -186,7 +186,7 @@ const createSearchOpenPositionsTool = () => {
 				const keywords = input.keywords.toLowerCase();
 
 				// Search in title, department, skills, description
-				const results = await db
+				const results = await getDb()
 					.select()
 					.from(openPositions)
 					.where(
@@ -253,7 +253,7 @@ const createGetPositionMatchesTool = () => {
 		// biome-ignore lint/suspicious/noExplicitAny: LangChain tool type compatibility
 		async (input: any) => {
 			try {
-				const matches = await db
+				const matches = await getDb()
 					.select({
 						applicationId: applicationPositionMatches.applicationId,
 						matchingScore: applicationPositionMatches.matchingScore,
@@ -318,7 +318,7 @@ const createSearchApplicationsTool = () => {
 
 				// Get full application details
 				const applicationIds = results.map(r => r.entityId);
-				const applications = await db
+				const applications = await getDb()
 					.select()
 					.from(reviewedApplications)
 					.where(inArray(reviewedApplications.id, applicationIds));
@@ -383,13 +383,13 @@ const createClosePositionTool = () => {
 		async (input: any) => {
 			try {
 				// Get position and application details for confirmation
-				const [position] = await db
+				const [position] = await getDb()
 					.select()
 					.from(openPositions)
 					.where(eq(openPositions.id, input.positionId))
 					.limit(1);
 
-				const [application] = await db
+				const [application] = await getDb()
 					.select()
 					.from(reviewedApplications)
 					.where(eq(reviewedApplications.id, input.applicationId))
@@ -404,7 +404,7 @@ const createClosePositionTool = () => {
 				}
 
 				// Update position to closed
-				await db
+				await getDb()
 					.update(openPositions)
 					.set({
 						status: "filled",

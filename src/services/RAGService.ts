@@ -4,7 +4,7 @@ import { OpenAIEmbeddings } from "@langchain/openai";
 import { eq, sql } from "drizzle-orm";
 import { promises as fs } from "fs";
 import path from "path";
-import { db } from "@/lib/db";
+import { getDb } from "@/lib/db";
 import { extractPDFText } from "@/lib/pdfParser.server";
 import { documentChunks, documents } from "@/repo/schema";
 
@@ -50,7 +50,7 @@ export class RAGService {
 			const fullText = await extractPDFText(filePath);
 
 			// 3. Store document in database
-			const [document] = await db
+			const [document] = await getDb()
 				.insert(documents)
 				.values({
 					filename: file.name,
@@ -138,7 +138,7 @@ export class RAGService {
 				}
 			}
 
-			await db.insert(documentChunks).values(chunkRecords);
+			await getDb().insert(documentChunks).values(chunkRecords);
 
 			return {
 				documentId: document.id,
@@ -170,7 +170,7 @@ export class RAGService {
 
 			// Perform vector similarity search using pgvector
 			// Group by document to avoid duplicates, return full document content
-			const results = await db.execute<{
+			const results = await getDb().execute<{
 				content: string;
 				document_id: number;
 				filename: string;
@@ -210,7 +210,7 @@ export class RAGService {
 	): Promise<{ documentId: number; chunksCount: number }> {
 		try {
 			// 1. Store document in database
-			const [document] = await db
+			const [document] = await getDb()
 				.insert(documents)
 				.values({
 					filename: title,
@@ -271,7 +271,7 @@ export class RAGService {
 				}
 			}
 
-			await db.insert(documentChunks).values(chunkRecords);
+			await getDb().insert(documentChunks).values(chunkRecords);
 
 			return {
 				documentId: document.id,
@@ -289,7 +289,7 @@ export class RAGService {
 	 * Get all documents
 	 */
 	static async getAllDocuments() {
-		return await db.select().from(documents).orderBy(documents.uploadDate);
+		return await getDb().select().from(documents).orderBy(documents.uploadDate);
 	}
 
 	/**
@@ -297,7 +297,7 @@ export class RAGService {
 	 */
 	static async deleteDocument(documentId: number) {
 		// Chunks will be automatically deleted due to CASCADE
-		await db.delete(documents).where(eq(documents.id, documentId));
+		await getDb().delete(documents).where(eq(documents.id, documentId));
 	}
 
 	/**
