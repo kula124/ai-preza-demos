@@ -1,0 +1,782 @@
+{
+  "name": "CareersPipeline_Updated",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMonth"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {
+          "sender": "ikulis@profico.hr"
+        },
+        "options": {
+          "dataPropertyAttachmentsPrefixName": "attachment_",
+          "downloadAttachments": true
+        }
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -432,
+        160
+      ],
+      "id": "11dc39fb-5584-4e36-91e0-04c19b756cd3",
+      "name": "Gmail Trigger",
+      "alwaysOutputData": false,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "9iFYb4RgKNN4AYY0",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=# N8N AI Agent Prompt - Job Application Review\n\n## Input Variables\n\n```\nCV File: {{ $json.cv_text }}\nEmail Body: {{ $json.email_text }}\nEmail Subject: {{ $json.email_subject }}\nOpen Jobs JSON: {{ JSON.stringify($json.jobs, NULL, 2) }}\n```\n\n## Your Role\n\nYou are a strict technical recruiter AI that analyzes job applications. You have:\n- Candidate CV/Resume\n- Candidate's application email\n- Open job positions JSON\n- GitHub tools for code verification\n- **Supabase tools to insert data directly into database**\n\n---\n\n## Your Task\n\n**Analyze the candidate against ALL open positions and store the results in the database.**\n\n### STEP 1: Extract Candidate Information\n\nFrom CV and email, extract:\n- Full name\n- Email address\n- GitHub username (search CV and email thoroughly)\n- Key skills\n- Years of experience\n\n**If GitHub username found**, use GitHub tools to:\n- List repositories\n- Examine code quality\n- Check contribution activity\n- Verify CV skills against actual code\n\n---\n\n### STEP 2: Evaluate Against Each Position\n\nFor EACH position in the Open Jobs JSON, calculate an **Overall Score (0-100)**:\n\n**Scoring Breakdown:**\n- **Required Skills Match (40 pts)**: How many required skills does the candidate have? Assess depth of experience.\n- **Experience Level (25 pts)**: Years of experience and seniority level vs requirements\n- **Technical Depth (20 pts)**: Project complexity, GitHub code quality, problem-solving evidence\n- **Communication (15 pts)**: CV clarity, email professionalism, presentation quality\n\n**Be Strict:**\n- No benefit of the doubt\n- Evidence-based only\n- If unclear = assume gap\n- Old experience (5+ years ago) = doesn't count\n- \"Familiar with\" = not the same as \"worked with\"\n\n**Red Flags (reduce scores):**\n- Missing critical required skills: -20 pts\n- No GitHub for engineering role: -15 pts\n- Less than minimum experience: -25 pts\n- Unprofessional communication: -10 pts\n- Vague CV descriptions: -10 pts\n\n**Recommendation Thresholds:**\n- **90-100**: HIRE\n- **75-89**: MAYBE\n- **60-74**: MAYBE\n- **45-59**: REJECT\n- **0-44**: REJECT\n\n---\n\n### STEP 3: Create Comprehensive Markdown Review\n\nCreate a detailed markdown review following this structure:\n\n```markdown\n# Candidate Evaluation: [Candidate Name]\n\n## Applied for Best Match: [Highest Scoring Position Title]\n\n**Date Reviewed:** [Today's Date]\n**Overall Score:** [Highest Score]/100\n**Recommendation:** [HIRE|MAYBE|REJECT]\n\n---\n\n## Candidate Information\n- **Name:** [Full Name]\n- **Email:** [Email Address]\n- **GitHub:** [Username or \"Not provided\"]\n- **Experience:** [X years]\n- **Key Skills:** [List main skills]\n\n---\n\n## Position Matches Evaluated\n\n### 1. [Position Title] - Score: [X/100]\n\n**Scoring Breakdown:**\n- Required Skills: [X/40]\n- Experience Level: [X/25]\n- Technical Depth: [X/20]\n- Communication: [X/15]\n\n**Strengths:**\n- [Specific strength with evidence from CV]\n- [Another strength]\n- [Third strength]\n\n**Gaps:**\n- [Missing skill or requirement]\n- [Another gap]\n- [Third gap]\n\n**Match Reasoning:**\n[2-3 sentences explaining why this score makes sense and whether candidate is a good fit for this specific position]\n\n---\n\n### 2. [Next Position Title] - Score: [X/100]\n\n[Repeat same format for EACH position evaluated]\n\n---\n\n## GitHub Analysis\n\n[If GitHub available:]\n- **Repositories:** [Count]\n- **Code Quality:** [Assessment based on reviewing repos]\n- **Recent Activity:** [Active last 30 days? Last commit date?]\n- **Top Languages:** [List]\n- **Notable Projects:** [List 2-3 impressive projects]\n\n[If NOT available:]\n- ❌ No GitHub profile provided - significant negative signal for engineering roles\n\n---\n\n## Email & Communication Assessment\n- **Professionalism:** [X/10]\n- **Clarity:** [X/10]\n- **Attention to Detail:** [X/10]\n- **Issues Found:** [List any grammar, spelling, formatting problems]\n\n---\n\n## Final Assessment\n\n**Best Match:** [Position Title] ([Score]/100)\n\n**Overall Impression:**\n[2-3 paragraphs providing honest, critical assessment. Include:\n- Whether candidate meets the bar\n- Specific concerns to address\n- Comparison to typical candidates at this level\n- Any deal-breakers or exceptional qualities]\n\n**Next Steps:**\n[If not rejected: What needs validation in interview]\n[If rejected: Clear reason why]\n\n**Red Flags:**\n[List any serious concerns, or write \"None\"]\n\n---\n```\n\n---\n\n### STEP 4: Store Results in Database\n\n**Use your Supabase tools to perform these actions:**\n\n#### 4a. Insert into `reviewed_applications` table\n\n```\nTable: reviewed_applications\nColumns:\n  - candidate_name: [Extracted full name]\n  - date_reviewed: [Current timestamp]\n  - overall_score: [The HIGHEST score from all position matches]\n  - full_markdown_review: [The complete markdown review you created]\n```\n\n**Save the returned `id` - you'll need it for the next step!**\n\n#### 4b. For EACH position evaluated, insert into `application_position_matches` table\n\n```\nTable: application_position_matches\nColumns:\n  - application_id: [The id from step 4a]\n  - position_id: [Position ID from jobs JSON]\n  - matching_score: [The score for this specific position]\n  - match_reasoning: [Brief 1-2 sentence explanation of the match]\n```\n\n**Repeat this insert for EVERY position you evaluated.**\n\n---\n\n## Evaluation Guidelines\n\n### Be Critical About:\n1. **Actual hands-on experience** vs just listing technologies\n2. **Depth of knowledge** - worked extensively vs briefly used\n3. **Recency** - 5-year-old experience with outdated versions doesn't count\n4. **Project complexity** - simple CRUD apps vs complex systems\n5. **Code quality** - GitHub is essential for engineering roles\n6. **Professional communication** - grammar, clarity, professionalism\n7. **Specificity** - vague descriptions are red flags\n\n### Do NOT:\n- Give benefit of the doubt on unclear experience\n- Inflate scores to be nice\n- Overlook missing required skills\n- Make assumptions about unlisted skills\n- Ignore red flags\n\n### Automatic Strong Penalties:\n- Missing critical required skills\n- Less than minimum required years of experience\n- No code samples/GitHub for software engineering positions\n- Unprofessional or unclear communication\n- Evidence of dishonesty or exaggeration\n\n---\n\n## Example Workflow\n\n1. Extract candidate name: \"John Doe\"\n2. Find GitHub: \"johndoe\"\n3. Use GitHub tools to review repositories\n4. Evaluate against Position 1 (JOB001): Score 78/100\n5. Evaluate against Position 2 (JOB002): Score 65/100\n6. Best match is Position 1 with 78/100\n7. Create comprehensive markdown review\n8. Insert into `reviewed_applications`:\n   - candidate_name: \"John Doe\"\n   - date_reviewed: \"2025-10-12 14:30:00\"\n   - overall_score: 78\n   - full_markdown_review: [Your markdown]\n   - Returns id: 123\n9. Insert into `application_position_matches`:\n   - application_id: 123, position_id: \"JOB001\", matching_score: 78, match_reasoning: \"Strong React skills...\"\n10. Insert into `application_position_matches`:\n    - application_id: 123, position_id: \"JOB002\", matching_score: 65, match_reasoning: \"Good frontend but...\"\n\n---\n\n## Error Handling\n\nIf you cannot complete the task:\n1. Do NOT insert anything into the database\n2. Report what went wrong\n3. Include \"I_HAVE_FAILED\" in your output so it can be caught\n\n---\n\n## Remember\n\n- **Evaluate ALL positions** in the jobs JSON, not just one\n- **Be strict and honest** - quality hires matter\n- **Use evidence** from CV, not assumptions\n- **GitHub verification** is critical for engineering roles\n- **Overall score** = highest score from all position matches\n- **Use Supabase tools** to insert data - you don't need to output JSON\n- **Markdown review** should be comprehensive and detailed\n\n",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        1136,
+        160
+      ],
+      "id": "c7495271-1112-4d9e-b06b-10db2986cb80",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "claude-3-5-haiku-20241022",
+          "mode": "list",
+          "cachedResultName": "Claude Haiku 3.5"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [
+        1136,
+        384
+      ],
+      "id": "085ff85d-2089-4443-8cc7-9721eba146a5",
+      "name": "Anthropic Chat Model",
+      "credentials": {
+        "anthropicApi": {
+          "id": "3RrxmKSlMCMFKlFW",
+          "name": "Anthropic account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract AI agent output\nconst items = $input.all();\n\nfor (const item of items) {\n  // Default values\n  item.json.hasErrors = false;\n  item.json.errorDetails = [];\n  \n  // Get the output text\n  const output = item.json.output || item.json.text || '';\n  \n  // Check for explicit failure message\n  if (output.includes('I_HAVE_FAILED')) {\n    item.json.hasErrors = true;\n    item.json.errorDetails.push('AI explicitly indicated failure with I_HAVE_FAILED marker');\n  }\n  \n  // Basic validation checks\n  if (!output.includes('Candidate Evaluation:')) {\n    item.json.hasErrors = true;\n    item.json.errorDetails.push('Missing expected section: Candidate Evaluation');\n  }\n  \n  if (!output.includes('Matching Score:')) {\n    item.json.hasErrors = true;\n    item.json.errorDetails.push('Missing expected section: Matching Score');\n  }\n  \n  if (!output.includes('Recommendation:')) {\n    item.json.hasErrors = true;\n    item.json.errorDetails.push('Missing expected section: Recommendation');\n  }\n  \n  // Check for empty analysis\n  if (output.length < 500) {\n    item.json.hasErrors = true;\n    item.json.errorDetails.push('Output suspiciously short, likely incomplete analysis');\n  }\n  \n  // Log error status\n  console.log(`Error check complete. hasErrors: ${item.json.hasErrors}`, \n              item.json.errorDetails);\n}\n\n// Return all items, including error flags\nreturn items;"
+      },
+      "id": "5616cab1-94ee-475f-9ec5-81db4ce7cbc2",
+      "name": "Error check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1456,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "user",
+        "owner": {
+          "__rl": true,
+          "mode": "name",
+          "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Repository_Owner', ``, 'string') }}"
+        },
+        "returnAll": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Return_All', ``, 'boolean') }}"
+      },
+      "type": "n8n-nodes-base.githubTool",
+      "typeVersion": 1.1,
+      "position": [
+        1344,
+        496
+      ],
+      "id": "3237697c-a241-4e0b-a224-c92084da9438",
+      "name": "Get a user's repositories in GitHub",
+      "webhookId": "8cfaa09f-3f2b-4680-af3c-7b392344df93",
+      "credentials": {
+        "githubApi": {
+          "id": "d1nlyh9EUBp7BAFy",
+          "name": "GitHub account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "http://example.com",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -96,
+        432
+      ],
+      "id": "4af2bb39-b143-493f-b094-6b7694c92165",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "binaryPropertyName": "attachment_0",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        16,
+        16
+      ],
+      "id": "7f9958e5-5536-4b20-ae34-343c52fa9cb1",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "9733f4c4-8bbc-4cd1-814e-de0486166d2d",
+              "name": "cv_text",
+              "value": "={{ $json.text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        16
+      ],
+      "id": "b70900d9-a4c3-4a2e-896c-4a7f47e1d2b5",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "10dd0f74-3302-4144-b64a-ffdc767c0393",
+              "name": "email_text",
+              "value": "={{ $json.text }}",
+              "type": "string"
+            },
+            {
+              "id": "d34b8ed3-a594-4425-a9f8-f44e5917311c",
+              "name": "email_subject",
+              "value": "={{ $json.subject }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "include": "selected",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -208,
+        160
+      ],
+      "id": "1c90b7a6-7ba7-4ed4-a509-7f0f40e964ed",
+      "name": "Edit Fields2"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "numberInputs": 3,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        944,
+        144
+      ],
+      "id": "9adb2d7b-935f-42d5-b853-878e92a17e7f",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "open_positions",
+        "returnAll": true,
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "closed_by",
+              "condition": "is",
+              "keyValue": "NULL"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        176,
+        304
+      ],
+      "id": "ff9573c8-1990-46d1-a20c-8cb1cfe4ba16",
+      "name": "Get many rows",
+      "credentials": {
+        "supabaseApi": {
+          "id": "vcmN4WJDzKGLGEBM",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ec976e3e-566a-4b1c-8b76-238770363e29",
+              "name": "jobs[].department",
+              "value": "={{ $json.department }}",
+              "type": "string"
+            },
+            {
+              "id": "1199f8a1-5d7c-4242-9fa4-6c2011febed3",
+              "name": "jobs[].description",
+              "value": "={{ $json.description }}",
+              "type": "string"
+            },
+            {
+              "id": "80886bff-3c85-4277-b0b1-349de55aa225",
+              "name": "jobs[].title",
+              "value": "={{ $json.title }}",
+              "type": "string"
+            },
+            {
+              "id": "2efd5712-03cf-4e29-bb13-984ba0363d48",
+              "name": "jobs[].required_skills",
+              "value": "={{ $json.required_skills }}",
+              "type": "array"
+            },
+            {
+              "id": "ac13c2ac-a9aa-4302-b2bc-691e98c955fe",
+              "name": "jobs[].experience_level",
+              "value": "={{ $json.experience_level }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        464,
+        480
+      ],
+      "id": "a8aacd18-80b3-42ed-bd81-d2a6cc01dd6b",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "jobs",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        384,
+        304
+      ],
+      "id": "a7ed5b17-989b-4970-8970-a668fe2e42e1",
+      "name": "Aggregate"
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Create a row in Supabase database to store the reviewed application.\nUse it to store your full review markdown text.\n!!IMPORTANT!!\nTHIS TOOL SHOULD BE ONLY CALLED ONCE",
+        "tableId": "reviewed_applications",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "candidate_name",
+              "fieldValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('fieldValues0_Field_Value', `Name of the person applying`, 'string') }}"
+            },
+            {
+              "fieldId": "overall_score",
+              "fieldValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('fieldValues1_Field_Value', `Your overal score, must be a numebr.`, 'string') }}"
+            },
+            {
+              "fieldId": "full_markdown_review",
+              "fieldValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('fieldValues2_Field_Value', ``, 'string') }}"
+            },
+            {
+              "fieldId": "date_reviewed",
+              "fieldValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('fieldValues3_Field_Value', `Today's date in string format.`, 'string') }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabaseTool",
+      "typeVersion": 1,
+      "position": [
+        1264,
+        368
+      ],
+      "id": "da13246c-a1cf-4fde-a35c-d50dcccd48c7",
+      "name": "Create application entry",
+      "credentials": {
+        "supabaseApi": {
+          "id": "vcmN4WJDzKGLGEBM",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Create a row in Supabase. You should match the application for a job to a job in the Supabase table. Run this tool AFTER you have inserted application into the database to enstablish the link.",
+        "tableId": "application_position_matches",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "matching_score",
+              "fieldValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('fieldValues0_Field_Value', `Just a number describing a match for the open position. Must be a number`, 'string') }}"
+            },
+            {
+              "fieldId": "application_id",
+              "fieldValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('fieldValues1_Field_Value', `The id of the application you have inserted at the previous step`, 'string') }}"
+            },
+            {
+              "fieldId": "position_id",
+              "fieldValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('fieldValues2_Field_Value', `The ID of the open position you have received in your jobs input`, 'string') }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabaseTool",
+      "typeVersion": 1,
+      "position": [
+        1424,
+        368
+      ],
+      "id": "b23e5f82-4517-4f8e-8b8b-7ebf8289e985",
+      "name": "Match entry to job opening",
+      "credentials": {
+        "supabaseApi": {
+          "id": "vcmN4WJDzKGLGEBM",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        1360,
+        -192
+      ],
+      "id": "a9054a9b-cf62-4a39-8664-a225198f0ad9",
+      "name": "AI Agent1"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "claude-sonnet-4-20250514",
+          "cachedResultName": "Claude 4 Sonnet"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [
+        1232,
+        16
+      ],
+      "id": "48b210b0-0fac-4138-86d5-f03cc4294103",
+      "name": "Anthropic Chat Model1",
+      "credentials": {
+        "anthropicApi": {
+          "id": "3RrxmKSlMCMFKlFW",
+          "name": "Anthropic account"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "HTTP Request": [
+      {
+        "json": {
+          "jobs": [
+            {
+              "id": "JOB001",
+              "title": "Frontend Developer",
+              "department": "Engineering",
+              "required_skills": [
+                "JavaScript",
+                "React",
+                "CSS",
+                "HTML5"
+              ],
+              "experience_level": "Mid-level",
+              "location": "Remote",
+              "employment_type": "Full-time",
+              "salary_range": [
+                85000,
+                115000
+              ]
+            },
+            {
+              "id": "JOB002",
+              "title": "Backend Engineer",
+              "department": "Engineering",
+              "required_skills": [
+                "Node.js",
+                "Express",
+                "MongoDB",
+                "API Design"
+              ],
+              "experience_level": "Senior",
+              "location": "Hybrid",
+              "employment_type": "Full-time",
+              "salary_range": [
+                110000,
+                140000
+              ]
+            },
+            {
+              "id": "JOB003",
+              "title": "DevOps Specialist",
+              "department": "Infrastructure",
+              "required_skills": [
+                "AWS",
+                "Docker",
+                "Kubernetes",
+                "CI/CD",
+                "Terraform"
+              ],
+              "experience_level": "Senior",
+              "location": "Remote",
+              "employment_type": "Contract",
+              "salary_range": [
+                120000,
+                150000
+              ]
+            },
+            {
+              "id": "JOB004",
+              "title": "UI/UX Designer",
+              "department": "Design",
+              "required_skills": [
+                "Figma",
+                "User Research",
+                "Prototyping",
+                "Design Systems"
+              ],
+              "experience_level": "Mid-level",
+              "location": "Onsite",
+              "employment_type": "Full-time",
+              "salary_range": [
+                90000,
+                120000
+              ]
+            },
+            {
+              "id": "JOB005",
+              "title": "QA Engineer",
+              "department": "Quality Assurance",
+              "required_skills": [
+                "Selenium",
+                "Jest",
+                "Cypress",
+                "Test Planning"
+              ],
+              "experience_level": "Junior",
+              "location": "Hybrid",
+              "employment_type": "Full-time",
+              "salary_range": [
+                75000,
+                95000
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "Gmail Trigger": [
+      {
+        "json": {
+          "id": "199d47e7ff21e4fc",
+          "threadId": "199d47e7ff21e4fc",
+          "labelIds": [
+            "IMPORTANT",
+            "CATEGORY_PERSONAL",
+            "INBOX"
+          ],
+          "sizeEstimate": 152610,
+          "headers": {
+            "delivered-to": "Delivered-To: kula124@gmail.com",
+            "received": "Received: from mail-sor-f65.google.com (mail-sor-f65.google.com. [209.85.220.65])\r\n        by mx.google.com with SMTPS id a640c23a62f3a-b55d28836aesor89440466b.2.2025.10.11.11.18.03\r\n        for <Kula124@gmail.com>\r\n        (Google Transport Security);\r\n        Sat, 11 Oct 2025 11:18:04 -0700 (PDT)",
+            "x-received": "X-Received: by 2002:a17:907:7f8a:b0:b43:b7ec:b896 with SMTP id\r\n a640c23a62f3a-b50aa48dac0mr835592266b.1.1760206682466; Sat, 11 Oct 2025\r\n 11:18:02 -0700 (PDT)",
+            "arc-seal": "ARC-Seal: i=1; a=rsa-sha256; t=1760206684; cv=none;\r\n        d=google.com; s=arc-20240605;\r\n        b=VeKkDxHKE4di8/b2WTCprqwsBMn09XIVNrmEzv2ZCkYw6Ru5WoKRsSmZBh/BHIbiH2\r\n         Qu/AmqRuCJhH0QigJZRORfqL0txKCFUqL5sVqbv5ySFsdZ0rYKkiseGeinbTlfzKAlTS\r\n         vgd682YmFXoB5vLzf1xZzMOapxjR9m3mz5h5pvaRKfT1yEbtbMUSIo17zzq27l/6JxJT\r\n         9l/rKkVRwfOmCkFUY+R6/0Vkssno450GUMvlGQpPQzpwxP58y5nOrQyHezR0v/k04Q94\r\n         bZ6JVL5eQ6t7Q8e381Xm2vEyVTTYDYvgX/s/4ZLy33GWJoFuVbXdeBk0wI36PLE04Xph\r\n         ovCA==",
+            "arc-message-signature": "ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20240605;\r\n        h=to:subject:message-id:date:from:mime-version:dkim-signature;\r\n        bh=gXCgonD8p4fu7c15N3Niy4kbfWZaljOcSPrfXsohYgs=;\r\n        fh=sXyJp5g2s/UV2WJwA0GjFRiImbPhA+eXTzB3yfnHkqc=;\r\n        b=TcQ1HQznIMZVLlOnAe8zynbmm6bZo0s4wza3Lqda93gYnUYpFB74itQ181lMH0h6H1\r\n         RS/UlM0innyift8QpQQlNOsB/vS3dq/2KfyMpC+LpkY8OrOx5XFcLeFZoI1ucw5bh04b\r\n         zwiIYvK3YIEUrW/XadjDiSsoROJrRg8QckzMIez1BIQYjFPvdoAst9uTcZ/mHHfvukP5\r\n         I/ys/cRpwschN0wpm9xH48p7feZKwxyKUaZsq2xhwPiM4z9NsHudWZU9EinOUo6N+wQ6\r\n         KztyZ1DR9Xh25Uynl4N0XSxpJWAsxFERAdC5p8BSgrgHtYoKFt6EykCkGSPUG0Nd8Zyu\r\n         kCIA==;\r\n        dara=google.com",
+            "arc-authentication-results": "ARC-Authentication-Results: i=1; mx.google.com;\r\n       dkim=pass header.i=@profico-hr.20230601.gappssmtp.com header.s=20230601 header.b=Z2dqTyBM;\r\n       spf=pass (google.com: domain of ikulis@profico.hr designates 209.85.220.65 as permitted sender) smtp.mailfrom=ikulis@profico.hr;\r\n       dmarc=pass (p=NONE sp=NONE dis=NONE) header.from=profico.hr;\r\n       dara=pass header.i=@gmail.com",
+            "return-path": "Return-Path: <ikulis@profico.hr>",
+            "received-spf": "Received-SPF: pass (google.com: domain of ikulis@profico.hr designates 209.85.220.65 as permitted sender) client-ip=209.85.220.65;",
+            "authentication-results": "Authentication-Results: mx.google.com;\r\n       dkim=pass header.i=@profico-hr.20230601.gappssmtp.com header.s=20230601 header.b=Z2dqTyBM;\r\n       spf=pass (google.com: domain of ikulis@profico.hr designates 209.85.220.65 as permitted sender) smtp.mailfrom=ikulis@profico.hr;\r\n       dmarc=pass (p=NONE sp=NONE dis=NONE) header.from=profico.hr;\r\n       dara=pass header.i=@gmail.com",
+            "dkim-signature": "DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;\r\n        d=profico-hr.20230601.gappssmtp.com; s=20230601; t=1760206683; x=1760811483; dara=google.com;\r\n        h=to:subject:message-id:date:from:mime-version:from:to:cc:subject\r\n         :date:message-id:reply-to;\r\n        bh=gXCgonD8p4fu7c15N3Niy4kbfWZaljOcSPrfXsohYgs=;\r\n        b=Z2dqTyBMLf2/jRMEuhqXvVkJoLT6XmKyflP1BOL1OcpyOqDLdkzqN9aIVwkII5sS1O\r\n         xuVDjpreDru/uGtWxvP89R0YS5UhSV0uHwRPAYeEVV6YZrujmQUj+Xkh10GUsTA8FpAP\r\n         xO+fHQTDG/ZibP9pBGSWIuhjY6itw4Ff1LcePV9s4PeTR26jv6qyuMihCnGhV0hZHn7Q\r\n         06mbCWJLP7HqDN6jwiGqeAerAt+M10FampSVkE99Uyfv2Ma17kFnZTKx1fsMS1eH3jbw\r\n         V+Suaiajq7heHYiCVolBtuPRLqBj+bhKqpP7r7AtDwMFhjCTru4t5mgMdyygh5PyHjAW\r\n         fT8g==",
+            "x-google-dkim-signature": "X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;\r\n        d=1e100.net; s=20230601; t=1760206683; x=1760811483;\r\n        h=to:subject:message-id:date:from:mime-version:x-gm-message-state\r\n         :from:to:cc:subject:date:message-id:reply-to;\r\n        bh=gXCgonD8p4fu7c15N3Niy4kbfWZaljOcSPrfXsohYgs=;\r\n        b=Oh+sTK6ys4GKYfAE/Hs54MEObJlCmughCmBm6Jv/vRzqnQw55MZgnwgwlxXcMGctq1\r\n         t13JfnLGdlF7KTTqsQnGi0ToituE+RvX7AGYvRgFAsv8vjfRw++WkOosULTpMxajmLHX\r\n         uTnkhDbp2/Kw1aBa8qXH5YAICKEb8g3p6cTzGMs7UxzlEOq5GhH2uQy/emgFtmugw3sJ\r\n         SHYvqUKytjc6e/IOSUm9+BeF2SJ5ukeKlo2dPUmMg9+Tau6d0Pyq46R+xZiAOCwfJTja\r\n         IdGFxaw4sfpmAU+L1uEEgrXj4o8C6oOKt4q6GZfOOFMXBoOdMNdbhLPblGIL1+aQmouk\r\n         VGDg==",
+            "x-gm-message-state": "X-Gm-Message-State: AOJu0YzYLpxRIxFiXNaefsghyoCqWS6neNDajdMcseOmpmGkxe2l9g5Z\r\n\tWIEpvWuTKYPt0Pr8o/vDL295NXaf59YjqAVM24b3VbeWYn5+6nnwevTyHvLszmNaOfXPVwjhcCs\r\n\twI2uHAaffryRU102Xj9rA021D59YFKK8B+VyQ3GtAeTViBiCmZs1IAMVeUw==",
+            "x-gm-gg": "X-Gm-Gg: ASbGncvPJDx7Ap+5z58B/mUQhlmoEJjjz64BVmjirMrwX77vxjplXtp8yGPVVOY6Zxx\r\n\tTfBJyrm6KJNrRLRWIRUp1jHJ5u5IdOfVjr9yRNpdA3cAF9mDZ0IG10CexNo+u/xoVuU3TynEtPB\r\n\t4Qpt6qx7E4OugX0u2TmYlMSc+rXXiWYHgSBfI/BnWp9dikfOcqzwZx1rcopI4xQWwoYH4uSpIuh\r\n\tctphrQJ04XoHOQ191bwklr4byGhvyubJA==",
+            "x-google-smtp-source": "X-Google-Smtp-Source: AGHT+IFi8eqhxBQVk/k4KWhqWkk5B9YPw1Vqc+5aTN8HI/K+7L2EQ1A4qC7xn9oC2XHAAyRsVaMiSl+v8ajHfaxiOIM=",
+            "mime-version": "MIME-Version: 1.0",
+            "from": "From: =?UTF-8?Q?Ivan_Kuli=C5=A1?= <ikulis@profico.hr>",
+            "date": "Date: Sat, 11 Oct 2025 20:17:49 +0200",
+            "x-gm-features": "X-Gm-Features: AS18NWC61DHzvBkar4efHCO4ox7H4RSMbXhj3VuGqEAUjvEzLFc8CkcgtLpS9R4",
+            "message-id": "Message-ID: <CAMn3+xOgybgaGws=+mkNq8PDrFitsq08rZdfim1h0X5KZpxDKQ@mail.gmail.com>",
+            "subject": "Subject: Testing n8n workflow",
+            "to": "To: =?UTF-8?Q?Ivan_Kuli=C5=A1?= <Kula124@gmail.com>",
+            "content-type": "Content-Type: multipart/mixed; boundary=\"0000000000000a84c30640e60eba\""
+          },
+          "html": "<div dir=\"ltr\"><div>Dear Ivan,</div><div><br></div><div>I am writing to express my enthusiastic interest in the Full Stack Web Developer position, as advertised on your website. With my comprehensive experience in both front-end and back-end development, I am confident in my ability to contribute significantly to your team.</div><div><br></div><div>My CV, which is attached for your review, provides further details on my qualifications and achievements. I am particularly drawn to Kulify&#39;s innovative approach to small projects approach your company is doing.</div><div><br></div><div>Thank you for your time and consideration. I look forward to the opportunity to discuss how my skills and experience can benefit your company.</div><div><br></div><div>Best regards,</div><div>Ivan Kuliš</div><div><br></div><span class=\"gmail_signature_prefix\">-- </span><br><div dir=\"ltr\" class=\"gmail_signature\" data-smartmail=\"gmail_signature\"><div dir=\"ltr\"><div style=\"color:rgb(34,34,34)\"><b><font color=\"#000000\">Ivan Kuliš</font></b><br></div><div dir=\"ltr\"><div dir=\"ltr\"><div><font color=\"#666666\" size=\"1\">Frontend Engineer</font></div><div><a href=\"tel:+385+91+720+3778\" style=\"color:rgb(17,85,204);font-size:x-small\" target=\"_blank\"><font color=\"#3d85c6\">+385 91 720 3778</font></a><font color=\"#666666\" size=\"1\"><br></font></div><div><br></div><div style=\"color:rgb(34,34,34)\"><div><img width=\"96\" height=\"27\" src=\"https://ci3.googleusercontent.com/mail-sig/AIorK4waJpPkU4or8Wnn4G-XhWflzqpaQFTLlhz3nSLXo2YB1bebCmNKM0MqOGpTyhZ1QHJC9_nd25M\"><br><font size=\"1\">Product-driven digital agency.<br><a href=\"http://www.profi.co/\" style=\"color:rgb(17,85,204)\" target=\"_blank\"><font color=\"#3d85c6\">www.profi.co</font></a></font><br></div><div><font size=\"1\" color=\"#999999\"><i style=\"font-family:Slack-Lato,Slack-Fractions,appleLogo,sans-serif\">Ova elektronička poruka je povjerljiva i može sadržavati povlaštene informacije. Ako niste naznačeni primatelj, niste ovlašteni čitati, printati, pohraniti, obrađivati ili priopćavati ovu poruku. Ako ste ovu poruku primili greškom, molimo Vas da o tome odmah obavijestite pošiljatelja i izbrišete ovu poruku, njene privitke i kopije. Profico ne preuzima nikakvu odgovornost s obzirom na bilo koju moguću netočnost bilo kojeg podatka koji je sadržan u ovoj poruci ako takav podatak nije povezan s registriranim predmetom poslovanja Profico-a. Stajališta izražena u ovoj poruci ne odražavaju nužno službena stajališta Profico-a. Hvala!</i><br style=\"font-family:Slack-Lato,Slack-Fractions,appleLogo,sans-serif\"><i style=\"font-family:Slack-Lato,Slack-Fractions,appleLogo,sans-serif\"></i>--<br style=\"font-family:Slack-Lato,Slack-Fractions,appleLogo,sans-serif\"><i style=\"font-family:Slack-Lato,Slack-Fractions,appleLogo,sans-serif\">This e-mail is confidential and may also contain privileged information. If you are not the intended recipient, you are not authorised to read, print, save, process or disclose this message. If you have received this message by mistake, please inform the sender immediately and delete this e-mail, its attachments and any copies. Profico does not take any responsibility with regards to any possible inaccuracy of any data contained in this e-mail if such data do not relate to the registered operations of Profico. The opinions expressed in this e-mail do not necessarily reflect the official positions of Profico. Thank you!</i></font></div></div></div></div></div></div></div>\n",
+          "text": "Dear Ivan,\n\nI am writing to express my enthusiastic interest in the Full Stack Web\nDeveloper position, as advertised on your website. With my comprehensive\nexperience in both front-end and back-end development, I am confident in my\nability to contribute significantly to your team.\n\nMy CV, which is attached for your review, provides further details on my\nqualifications and achievements. I am particularly drawn to Kulify's\ninnovative approach to small projects approach your company is doing.\n\nThank you for your time and consideration. I look forward to the\nopportunity to discuss how my skills and experience can benefit your\ncompany.\n\nBest regards,\nIvan Kuliš\n\n-- \n*Ivan Kuliš*\nFrontend Engineer\n+385 91 720 3778 <+385+91+720+3778>\n\n\nProduct-driven digital agency.\nwww.profi.co\n*Ova elektronička poruka je povjerljiva i može sadržavati povlaštene\ninformacije. Ako niste naznačeni primatelj, niste ovlašteni čitati,\nprintati, pohraniti, obrađivati ili priopćavati ovu poruku. Ako ste ovu\nporuku primili greškom, molimo Vas da o tome odmah obavijestite\npošiljatelja i izbrišete ovu poruku, njene privitke i kopije. Profico ne\npreuzima nikakvu odgovornost s obzirom na bilo koju moguću netočnost bilo\nkojeg podatka koji je sadržan u ovoj poruci ako takav podatak nije povezan\ns registriranim predmetom poslovanja Profico-a. Stajališta izražena u ovoj\nporuci ne odražavaju nužno službena stajališta Profico-a. Hvala!*\n--\n*This e-mail is confidential and may also contain privileged information.\nIf you are not the intended recipient, you are not authorised to read,\nprint, save, process or disclose this message. If you have received this\nmessage by mistake, please inform the sender immediately and delete this\ne-mail, its attachments and any copies. Profico does not take any\nresponsibility with regards to any possible inaccuracy of any data\ncontained in this e-mail if such data do not relate to the registered\noperations of Profico. The opinions expressed in this e-mail do not\nnecessarily reflect the official positions of Profico. Thank you!*\n",
+          "textAsHtml": "<p>Dear Ivan,</p><p>I am writing to express my enthusiastic interest in the Full Stack Web<br/>Developer position, as advertised on your website. With my comprehensive<br/>experience in both front-end and back-end development, I am confident in my<br/>ability to contribute significantly to your team.</p><p>My CV, which is attached for your review, provides further details on my<br/>qualifications and achievements. I am particularly drawn to Kulify&apos;s<br/>innovative approach to small projects approach your company is doing.</p><p>Thank you for your time and consideration. I look forward to the<br/>opportunity to discuss how my skills and experience can benefit your<br/>company.</p><p>Best regards,<br/>Ivan Kuli&scaron;</p><p>--<br/>*Ivan Kuli&scaron;*<br/>Frontend Engineer<br/>+385 91 720 3778 &lt;+385+91+720+3778&gt;</p><p>Product-driven digital agency.<br/><a href=\"http://www.profi.co\">www.profi.co</a><br/>*Ova elektroni&ccaron;ka poruka je povjerljiva i mo&zcaron;e sadr&zcaron;avati povla&scaron;tene<br/>informacije. Ako niste nazna&ccaron;eni primatelj, niste ovla&scaron;teni &ccaron;itati,<br/>printati, pohraniti, obra&dstrok;ivati ili priop&cacute;avati ovu poruku. Ako ste ovu<br/>poruku primili gre&scaron;kom, molimo Vas da o tome odmah obavijestite<br/>po&scaron;iljatelja i izbri&scaron;ete ovu poruku, njene privitke i kopije. Profico ne<br/>preuzima nikakvu odgovornost s obzirom na bilo koju mogu&cacute;u neto&ccaron;nost bilo<br/>kojeg podatka koji je sadr&zcaron;an u ovoj poruci ako takav podatak nije povezan<br/>s registriranim predmetom poslovanja Profico-a. Stajali&scaron;ta izra&zcaron;ena u ovoj<br/>poruci ne odra&zcaron;avaju nu&zcaron;no slu&zcaron;bena stajali&scaron;ta Profico-a. Hvala!*<br/>--<br/>*This e-mail is confidential and may also contain privileged information.<br/>If you are not the intended recipient, you are not authorised to read,<br/>print, save, process or disclose this message. If you have received this<br/>message by mistake, please inform the sender immediately and delete this<br/>e-mail, its attachments and any copies. Profico does not take any<br/>responsibility with regards to any possible inaccuracy of any data<br/>contained in this e-mail if such data do not relate to the registered<br/>operations of Profico. The opinions expressed in this e-mail do not<br/>necessarily reflect the official positions of Profico. Thank you!*</p>",
+          "subject": "Testing n8n workflow",
+          "date": "2025-10-11T18:17:49.000Z",
+          "to": {
+            "value": [
+              {
+                "address": "Kula124@gmail.com",
+                "name": "Ivan Kuliš"
+              }
+            ],
+            "html": "<span class=\"mp_address_group\"><span class=\"mp_address_name\">Ivan Kuli&#x161;</span> &lt;<a href=\"mailto:Kula124@gmail.com\" class=\"mp_address_email\">Kula124@gmail.com</a>&gt;</span>",
+            "text": "\"Ivan Kuliš\" <Kula124@gmail.com>"
+          },
+          "from": {
+            "value": [
+              {
+                "address": "ikulis@profico.hr",
+                "name": "Ivan Kuliš"
+              }
+            ],
+            "html": "<span class=\"mp_address_group\"><span class=\"mp_address_name\">Ivan Kuli&#x161;</span> &lt;<a href=\"mailto:ikulis@profico.hr\" class=\"mp_address_email\">ikulis@profico.hr</a>&gt;</span>",
+            "text": "\"Ivan Kuliš\" <ikulis@profico.hr>"
+          },
+          "messageId": "<CAMn3+xOgybgaGws=+mkNq8PDrFitsq08rZdfim1h0X5KZpxDKQ@mail.gmail.com>"
+        },
+        "binary": {
+          "attachment_0": {
+            "mimeType": "application/pdf",
+            "fileType": "pdf",
+            "fileExtension": "pdf",
+            "data": "filesystem-v2",
+            "fileName": "Ivan_Kuliš_VisualCV_Resume.pdf",
+            "id": "filesystem-v2:workflows/riMuAlaEvVUQ8ZiB/executions/27/binary_data/d83fea2f-5c23-4ebf-a96c-d2632c7fc724",
+            "fileSize": "103 kB"
+          }
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Error check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error check": {
+      "main": [
+        []
+      ]
+    },
+    "Get a user's repositories in GitHub": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        []
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields2": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get many rows",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get many rows": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        []
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Create application entry": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Match entry to job opening": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "edfe957b-5042-4f44-96b0-ffabd221d235",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "801f540a03b5b70e939894765bf663ad4ce771b6554cd4a471b80d8311cc91df"
+  },
+  "id": "riMuAlaEvVUQ8ZiB",
+  "tags": []
+}
