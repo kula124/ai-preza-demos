@@ -8,11 +8,11 @@ import {
 	getPositionsAction,
 	deletePositionAction,
 } from "./actions";
-import type { OpenPosition } from "@/repo/schema";
+import type { OpenPosition, OpenPositionWithApplication } from "@/repo/schema";
 import PositionForm from "./PositionForm";
 
 export default function PositionsPage() {
-	const [positions, setPositions] = useState<OpenPosition[]>([]);
+	const [positions, setPositions] = useState<OpenPositionWithApplication[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [showForm, setShowForm] = useState(false);
 	const [editingPosition, setEditingPosition] = useState<OpenPosition | null>(null);

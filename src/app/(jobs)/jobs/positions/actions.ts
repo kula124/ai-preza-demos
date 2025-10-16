@@ -80,7 +80,10 @@ export async function deletePositionAction(id: string) {
 	}
 }
 
-export async function getPositionsAction() {
+export async function getPositionsAction(): Promise<{
+	success: boolean;
+	positions: import("@/repo/schema").OpenPositionWithApplication[];
+}> {
 	try {
 		const positions = await db
 			.select({

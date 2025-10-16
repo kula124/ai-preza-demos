@@ -59,7 +59,8 @@ Please search the appropriate database and provide a helpful answer.`;
  */
 const createSearchTool = () => {
 	return tool(
-		async (input: { query: string }) => {
+		// biome-ignore lint/suspicious/noExplicitAny: LangChain tool type compatibility
+		async (input: any) => {
 			try {
 				const query = input.query;
 
@@ -117,7 +118,8 @@ EXAMPLES:
  */
 const createStorySearchTool = () => {
 	return tool(
-		async (input: { query: string }) => {
+		// biome-ignore lint/suspicious/noExplicitAny: LangChain tool type compatibility
+		async (input: any) => {
 			try {
 				const storyService = new StoryEmbeddingService();
 				const results = await storyService.similaritySearch(input.query, 3);
@@ -178,7 +180,8 @@ EXAMPLES:
  */
 const createSearchOpenPositionsTool = () => {
 	return tool(
-		async (input: { keywords: string }) => {
+		// biome-ignore lint/suspicious/noExplicitAny: LangChain tool type compatibility
+		async (input: any) => {
 			try {
 				const keywords = input.keywords.toLowerCase();
 
@@ -247,7 +250,8 @@ Use this when the user asks:
  */
 const createGetPositionMatchesTool = () => {
 	return tool(
-		async (input: { positionId: string }) => {
+		// biome-ignore lint/suspicious/noExplicitAny: LangChain tool type compatibility
+		async (input: any) => {
 			try {
 				const matches = await db
 					.select({
@@ -303,7 +307,8 @@ Use this when the user asks:
  */
 const createSearchApplicationsTool = () => {
 	return tool(
-		async (input: { query: string; limit?: number }) => {
+		// biome-ignore lint/suspicious/noExplicitAny: LangChain tool type compatibility
+		async (input: any) => {
 			try {
 				const embeddingService = new ApplicationEmbeddingService();
 				const results = await embeddingService.similaritySearch(
@@ -374,7 +379,8 @@ Use this when the user asks:
  */
 const createClosePositionTool = () => {
 	return tool(
-		async (input: { positionId: string; applicationId: number }) => {
+		// biome-ignore lint/suspicious/noExplicitAny: LangChain tool type compatibility
+		async (input: any) => {
 			try {
 				// Get position and application details for confirmation
 				const [position] = await db
@@ -580,6 +586,16 @@ export class AgentService {
 			{ configurable: { thread_id } },
 		);
 
-		return results.messages.at(-1)?.content || "Something went wrong";
+		const lastMessage = results.messages.at(-1);
+		const content = lastMessage?.content;
+
+		// Handle both string and array content types
+		if (typeof content === "string") {
+			return content;
+		} else if (Array.isArray(content)) {
+			return content.map(c => typeof c === "string" ? c : JSON.stringify(c)).join("");
+		}
+
+		return "Something went wrong";
 	}
 }

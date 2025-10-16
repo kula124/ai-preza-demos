@@ -164,6 +164,11 @@ export const applicationPositionMatches = pgTable(
 export type OpenPosition = typeof openPositions.$inferSelect;
 export type NewOpenPosition = typeof openPositions.$inferInsert;
 
+// Extended type for positions with joined application data
+export type OpenPositionWithApplication = OpenPosition & {
+	closedByApplication: ReviewedApplication | null;
+};
+
 export type ReviewedApplication = typeof reviewedApplications.$inferSelect;
 export type NewReviewedApplication = typeof reviewedApplications.$inferInsert;
 

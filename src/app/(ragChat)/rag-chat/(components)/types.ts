@@ -10,4 +10,5 @@ export interface IMessage {
 	matches?: Array<any>;
 	confirmation?: any;
 	toolType?: string;
+	toolUsage?: any;
 }
