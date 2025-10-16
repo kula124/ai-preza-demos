@@ -18,7 +18,33 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - ai-preza-network
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ai-preza-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/ai_preza_demos
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - ai-preza-network
 
 volumes:
   postgres_data:
     driver: local
+
+networks:
+  ai-preza-network:
+    driver: bridge

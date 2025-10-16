@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+	// Enable standalone output for Docker
+	output: "standalone",
+
 	// Mark PDF parsing libraries as external to prevent bundling
 	serverExternalPackages: [
 		"pdf-poppler",
