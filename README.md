@@ -1,6 +1,6 @@
 # AI Preza Demos
 
-Three AI-powered demo applications built with Next.js 15, TypeScript, Anthropic Claude, and LangChain.
+Four AI-powered demo applications built with Next.js 15, TypeScript, Anthropic Claude, and LangChain.
 
 ## 📚 Applications
 
@@ -37,14 +37,17 @@ Document Q&A using Retrieval-Augmented Generation. Upload PDFs or text files and
 - Streaming responses
 
 ### 4. Jobs Application Reviewer
-AI-powered candidate matching system that analyzes job applications and matches them to open positions using semantic search.
+AI-powered candidate matching system that analyzes job applications and matches them to open positions using semantic search and vector embeddings.
 
 **Features:**
-- Job position management
-- Application review and scoring
-- Vector-based candidate matching
-- Automated position recommendations
-- LangGraph agent workflows
+- Job position management (create, view, edit open positions)
+- Application review with AI-powered scoring and analysis
+- Vector-based semantic candidate matching using embeddings
+- Automated position recommendations based on skills and experience
+- LangGraph agent workflows for intelligent application processing
+- Application and position tracking dashboard
+
+**Note:** This feature is accessible via the sidebar navigation at `/jobs/positions`
 
 ## 🚀 Quick Start
 
@@ -79,8 +82,13 @@ cp .env.example .env
 Now open `.env` in your text editor and configure the following:
 
 ```bash
-# Database (default configuration for local development)
+# Database - Choose ONE option:
+
+# Option 1: Local Docker PostgreSQL (default for local development)
 DATABASE_URL=postgresql://postgres:postgres@localhost:5433/ai_preza_demos
+
+# Option 2: Remote Database (Supabase, Neon, etc.)
+# DATABASE_URL=postgresql://user:password@host:port/database
 
 # Required: Get your API key from https://console.anthropic.com/
 ANTHROPIC_API_KEY=sk-ant-api03-YOUR-KEY-HERE
@@ -88,18 +96,25 @@ ANTHROPIC_API_KEY=sk-ant-api03-YOUR-KEY-HERE
 # Optional: Only needed if you want to use OpenAI for embeddings
 OPENAI_API_KEY=sk-YOUR-KEY-HERE
 
+# Optional: For Voyage AI embeddings
+# VOYAGE_API_KEY=pa-YOUR-VOYAGE-KEY
+
 # Application
 NODE_ENV=development
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
-**Important:** Make sure to replace `YOUR-KEY-HERE` with your actual Anthropic API key!
+**Important:**
+- Replace `YOUR-KEY-HERE` with your actual Anthropic API key
+- Choose the appropriate DATABASE_URL for your setup (local Docker or remote database)
 
 #### 3. Start the PostgreSQL Database
 
+**If using local Docker database (Option 1):**
+
 ```bash
 # Start PostgreSQL with pgvector extension
-docker compose up -d
+docker compose up -d postgres
 
 # Verify the database is running
 docker ps
@@ -107,9 +122,14 @@ docker ps
 
 You should see a container named `ai-preza-postgres` in the running state.
 
+**If using remote database (Option 2 - Supabase, Neon, etc.):**
+
+Skip this step - your database is already running remotely. Make sure your `DATABASE_URL` in `.env` is correctly configured.
+
 **Troubleshooting:**
 - If port 5433 is already in use, edit `docker-compose.yml` to change the port
-- Run `docker compose logs` to see database logs if issues occur
+- Run `docker compose logs postgres` to see database logs if issues occur
+- For remote databases, verify the connection string and ensure your IP is whitelisted
 
 #### 4. Initialize the Database
 
@@ -122,7 +142,7 @@ This creates all necessary tables including:
 - `stories` and `storyEmbeddings` (Bedtime Story feature)
 - `emails` (Email Helper feature)
 - `documents`, `documentChunks`, `chatHistory` (RAG Chat feature)
-- `openPositions`, `reviewedApplications`, etc. (Jobs feature)
+- `openPositions`, `reviewedApplications`, `applicationEmbeddings`, `applicationPositionMatches` (Jobs feature)
 
 **Optional:** Seed job positions data
 ```bash
@@ -150,11 +170,12 @@ Open your browser and navigate to:
 http://localhost:3000
 ```
 
-You should see the AI Preza Demos dashboard with four application cards:
+You should see the AI Preza Demos dashboard with three featured applications:
 1. Bedtime Story Writer
 2. Email Helper
 3. RAG Chat
-4. Jobs Application Reviewer
+
+The Jobs Application Reviewer feature is accessible via the sidebar navigation on the left.
 
 ### Verify Installation
 
@@ -164,6 +185,41 @@ Test each feature to ensure everything is working:
 2. **Email Helper** - Create a test email
 3. **RAG Chat** - Upload a small text file and ask a question
 4. **Jobs** - View the jobs dashboard (requires seeded data)
+
+## 🐳 Docker Deployment
+
+### Full Stack Deployment
+
+You can run the entire application stack (database + app) using Docker:
+
+```bash
+# Build and start both services
+docker compose up -d
+
+# View logs
+docker compose logs -f
+
+# Stop all services
+docker compose down
+```
+
+This will:
+1. Start PostgreSQL with pgvector on port 5433
+2. Build the Next.js application as a Docker image
+3. Run the app on port 3000
+
+**Environment Variables for Docker:**
+Make sure your `.env` file contains:
+- `ANTHROPIC_API_KEY` - Your Anthropic API key
+- `OPENAI_API_KEY` - (Optional) Your OpenAI API key
+- `VOYAGE_API_KEY` - (Optional) Your Voyage AI API key
+
+The docker-compose configuration will automatically:
+- Connect the app to the PostgreSQL database
+- Mount necessary volumes for data persistence
+- Set up networking between services
+
+**Note:** The Dockerfile includes poppler-utils for PDF processing, ensuring full RAG Chat functionality.
 
 ## 🔧 Troubleshooting
 
@@ -288,19 +344,31 @@ src/
 ├── app/
 │   ├── (common)/              # Shared components
 │   │   └── (components)/
-│   │       └── Sidebar.tsx
+│   │       └── Sidebar.tsx    # Navigation sidebar
 │   ├── (bedtimeStory)/        # Bedtime Story Writer
-│   │   └── bedtime-story/
+│   │   ├── bedtime-story/     # Story creation
+│   │   ├── story-library/     # Story library view
+│   │   └── story/[id]/        # Individual story page
 │   ├── (emailHelper)/         # Email Helper
-│   │   └── email-helper/
+│   │   ├── email-helper/      # Email creation
+│   │   └── email-library/     # Email library view
 │   ├── (ragChat)/             # RAG Chat
-│   │   └── rag-chat/
+│   │   ├── rag-chat/          # Chat interface
+│   │   └── rag-documents/     # Document management
+│   ├── (jobs)/                # Jobs Application Reviewer
+│   │   └── jobs/
+│   │       ├── positions/     # Position management
+│   │       └── applications/  # Application review
+│   ├── api/                   # API routes
+│   │   ├── jobs/              # Jobs API endpoints
+│   │   └── rag-chat/          # RAG Chat API endpoints
 │   ├── layout.tsx             # Root layout
-│   └── page.tsx               # Dashboard
+│   └── page.tsx               # Dashboard homepage
 ├── components/
 │   └── ui/                    # Reusable UI components
 ├── lib/                       # Utilities & configurations
-├── repo/                      # Database schema (Drizzle)
+├── repo/                      # Database schema (Drizzle ORM)
+│   └── schema.ts              # All table definitions
 ├── services/                  # Business logic
 └── utils/                     # Helper functions
 ```
@@ -310,11 +378,24 @@ src/
 ### Available Scripts
 
 ```bash
+# Development
 npm run dev          # Start development server
 npm run build        # Build for production
 npm run start        # Start production server
+
+# Code Quality
 npm run lint         # Run Biome linter
 npm run format       # Format code with Biome
+
+# Database
+npm run db:generate  # Generate new Drizzle migration
+npm run db:migrate   # Run pending migrations
+npm run db:push      # Push schema changes (dev only)
+npm run db:studio    # Open Drizzle Studio database browser
+
+# Data Seeding
+npm run seed-positions      # Seed job positions for Jobs feature
+npm run embed-applications  # Generate embeddings for applications
 ```
 
 ### Environment Variables
@@ -322,11 +403,14 @@ npm run format       # Format code with Biome
 See `.env.example` for all required environment variables.
 
 **Required:**
-- `DATABASE_URL` - PostgreSQL connection string
-- `ANTHROPIC_API_KEY` - Your Anthropic API key
+- `DATABASE_URL` - PostgreSQL connection string (local or remote)
+- `ANTHROPIC_API_KEY` - Your Anthropic API key from https://console.anthropic.com/
 
 **Optional:**
-- `OPENAI_API_KEY` - For OpenAI embeddings (if not using Anthropic)
+- `OPENAI_API_KEY` - For OpenAI embeddings and models
+- `VOYAGE_API_KEY` - For Voyage AI embeddings
+- `NODE_ENV` - Environment (development, production)
+- `NEXT_PUBLIC_APP_URL` - Application URL (default: http://localhost:3000)
 
 ## 📖 Documentation
 

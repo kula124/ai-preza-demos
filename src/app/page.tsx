@@ -66,9 +66,9 @@ export default function HomePage() {
 					</div>
 				</div>
 				<p className="text-lg text-gray-700 dark:text-gray-300 max-w-3xl">
-					Explore three powerful AI-powered applications designed to showcase
+					Explore four powerful AI-powered applications designed to showcase
 					the capabilities of modern language models. From creative storytelling
-					to professional communication and intelligent document analysis.
+					to professional communication, intelligent document analysis, and AI-powered recruitment.
 				</p>
 			</div>
 
@@ -140,6 +140,7 @@ export default function HomePage() {
 					These applications demonstrate various AI capabilities using
 					Anthropic's Claude via LangChain. Each app showcases different use
 					cases and interaction patterns with large language models.
+					The Jobs Application Reviewer feature is also available via the sidebar navigation.
 				</p>
 				<div className="flex flex-wrap gap-3">
 					<span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full text-sm font-medium">
