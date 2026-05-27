@@ -16,6 +16,7 @@ How LLMs actually behave, what tokens are, why embeddings work the way they do.
 "If you're building X, here's the recipe I'd reach for."
 
 - [When to Use RAG (and When Not To)](./patterns/when-rag-when-not.md) — Decision framework for retrieval
+- [DuckDB vs ClickHouse vs Postgres for Analytics](./patterns/duckdb-vs-clickhouse-vs-postgres.md) — Picking the right analytical database
 - *(more to come: tool-use-design, streaming-ux-patterns, multi-step-ai-forms, n8n-vs-code-agent)*
 
 ### 🔥 [Opinions](./opinions/) — hot takes
